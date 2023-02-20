@@ -49,7 +49,7 @@ class VideoReaderPipeline(Pipeline):
 										initial_fill=16)
 
 		# Define crop and permute operations to apply to every sequence
-		self.crop = ops.CropCastPermute(device="gpu", \
+		self.crop = ops.CropMirrorNormalize(device="gpu", \
 										crop=crop_size, \
 										output_layout=types.NCHW, \
 										output_dtype=types.FLOAT)
