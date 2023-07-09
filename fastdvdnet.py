@@ -6,7 +6,7 @@ FastDVDnet denoising algorithm
 import torch
 import torch.nn.functional as F
 
-def temp_denoise(model, noisyframe, sigma_noise):
+def temp_denoise(model, noisyframe, denoisedframe):
 	'''Encapsulates call to denoising model and handles padding.
 		Expects noisyframe to be normalized in [0., 1.]
 	'''
@@ -20,10 +20,10 @@ def temp_denoise(model, noisyframe, sigma_noise):
 		expanded_w = 4-expanded_w
 	padexp = (0, expanded_w, 0, expanded_h)
 	noisyframe = F.pad(input=noisyframe, pad=padexp, mode='reflect')
-	sigma_noise = F.pad(input=sigma_noise, pad=padexp, mode='reflect')
+	denoisedframe = F.pad(input=denoisedframe, pad=padexp, mode='reflect')
 
 	# denoise
-	out = torch.clamp(model(noisyframe, sigma_noise), 0., 1.)
+	out = torch.clamp(model(noisyframe, denoisedframe), 0., 1.)
 
 	if expanded_h:
 		out = out[:, :, :-expanded_h, :]
@@ -32,7 +32,7 @@ def temp_denoise(model, noisyframe, sigma_noise):
 
 	return out
 
-def denoise_seq_fastdvdnet(seq, noise_std, temp_psz, model_temporal):
+def denoise_seq_fastdvdnet(noisyseq, denoisedseq, temp_psz, model_temporal):
 	r"""Denoises a sequence of frames with FastDVDnet.
 
 	Args:
@@ -44,34 +44,39 @@ def denoise_seq_fastdvdnet(seq, noise_std, temp_psz, model_temporal):
 		denframes: Tensor, [numframes, C, H, W]
 	"""
 	# init arrays to handle contiguous frames and related patches
-	numframes, C, H, W = seq.shape
+	numframes, C, H, W = noisyseq.shape
+	numframesd, Cd, Hd, Wd = denoisedseq.shape
 	ctrlfr_idx = int((temp_psz-1)//2)
-	inframes = list()
-	denframes = torch.empty((numframes, C, H, W)).to(seq.device)
-
-	# build noise map from noise std---assuming Gaussian noise
-	noise_map = noise_std.expand((1, 1, H, W))
+	inframes_noisy = list()
+	inframes_denoised = list()
+	denframes = torch.empty((numframes, C, H, W)).to(noisyseq.device)
 
 	for fridx in range(numframes):
 		# load input frames
-		if not inframes:
+		if not inframes_noisy:
 		# if list not yet created, fill it with temp_patchsz frames
 			for idx in range(temp_psz):
 				relidx = abs(idx-ctrlfr_idx) # handle border conditions, reflect
-				inframes.append(seq[relidx])
+				inframes_noisy.append(noisyseq[relidx])
+				inframes_denoised.append(denoisedseq[relidx])
 		else:
-			del inframes[0]
+			del inframes_noisy[0]
+			del inframes_denoised[0]
 			relidx = min(fridx + ctrlfr_idx, -fridx + 2*(numframes-1)-ctrlfr_idx) # handle border conditions
-			inframes.append(seq[relidx])
+			inframes_noisy.append(noisyseq[relidx])
+			inframes_denoised.append(denoisedseq[relidx])
 
-		inframes_t = torch.stack(inframes, dim=0).contiguous().view((1, temp_psz*C, H, W)).to(seq.device)
+		inframes_t_noisy = torch.stack(inframes_noisy, dim=0).contiguous().view((1, temp_psz*C, H, W)).to(noisyseq.device)
+		inframes_t_denoised = torch.stack(inframes_denoised, dim=0).contiguous().view((1, temp_psz * C, H, W)).to(denoisedseq.device)
 
 		# append result to output list
-		denframes[fridx] = temp_denoise(model_temporal, inframes_t, noise_map)
+		denframes[fridx] = temp_denoise(model_temporal, inframes_t_noisy, inframes_t_denoised)
 
 	# free memory up
-	del inframes
-	del inframes_t
+	del inframes_noisy
+	del inframes_t_noisy
+	del inframes_denoised
+	del inframes_t_denoised
 	torch.cuda.empty_cache()
 
 	# convert to appropiate type and return

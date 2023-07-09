@@ -28,9 +28,14 @@ def main(**args):
 
 	# Load dataset
 	print('> Loading datasets ...')
-	dataset_val = ValDataset(valsetdir=args['valset_dir'], gray_mode=False)
+	dataset_val = ValDataset(valsetdir_noisy=args['valset_dir_noisy'], \
+							 valsetdir_denoised=args['valset_dir_denoised'], \
+							 valsetdir_original=args['valset_dir_original'], \
+							 gray_mode=False)
 	loader_train = train_dali_loader(batch_size=args['batch_size'],\
-									file_root=args['trainset_dir'],\
+									noisy_file_root=args['trainset_dir_noisy'], \
+									denoised_file_root=args['trainset_dir_denoised'], \
+									original_file_root=args['trainset_dir_original'], \
 									sequence_length=args['temp_patch_size'],\
 									crop_size=args['patch_size'],\
 									epoch_size=args['max_number_patches'],\
@@ -78,7 +83,6 @@ def main(**args):
 		# train
 
 		for i, data in enumerate(loader_train, 0):
-
 			# Pre-training step
 			model.train()
 
@@ -87,26 +91,18 @@ def main(**args):
 
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
 			# extract ground truth (central frame)
-			img_train, gt_train = normalize_augment(data[0]['data'], ctrl_fr_idx)
-			N, _, H, W = img_train.size()
-
-			# std dev of each sequence
-			stdn = torch.empty((N, 1, 1, 1)).cuda().uniform_(args['noise_ival'][0], to=args['noise_ival'][1])
-			# draw noise samples from std dev tensor
-			noise = torch.zeros_like(img_train)
-			noise = torch.normal(mean=noise, std=stdn.expand_as(noise))
-
-			#define noisy input
-			imgn_train = img_train + noise
+			imgo_train, gt_train = normalize_augment(data[0]['data_original'], ctrl_fr_idx)
+			imgn_train, _ = normalize_augment(data[0]['data_noisy'], ctrl_fr_idx)
+			imgd_train, _ = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
+			N, _, H, W = imgn_train.size()
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
 			imgn_train = imgn_train.cuda(non_blocking=True)
-			noise = noise.cuda(non_blocking=True)
-			noise_map = stdn.expand((N, 1, H, W)).cuda(non_blocking=True) # one channel per image
+			imgd_train = imgd_train.cuda(non_blocking=True)
 
 			# Evaluate model and optimize it
-			out_train = model(imgn_train, noise_map)
+			out_train = model(imgn_train, imgd_train)
 
 			# Compute loss
 			loss = criterion(gt_train, out_train) / (N*2)
@@ -131,6 +127,19 @@ def main(**args):
 			# update step counter
 			training_params['step'] += 1
 
+			# Validation and log images
+			# validate_and_log(
+			# 	model_temp=model, \
+			# 	dataset_val=dataset_val, \
+			# 	valnoisestd=args['val_noiseL'], \
+			# 	temp_psz=args['temp_patch_size'], \
+			# 	writer=writer, \
+			# 	epoch=epoch, \
+			# 	lr=current_lr, \
+			# 	logger=logger, \
+			# 	trainimg=imgo_train
+			# )
+
 		# Call to model.eval() to correctly set the BN layers before inference
 		model.eval()
 
@@ -144,7 +153,7 @@ def main(**args):
 						epoch=epoch, \
 						lr=current_lr, \
 						logger=logger, \
-						trainimg=img_train
+						trainimg=imgo_train
 						)
 
 		# save model and checkpoint
@@ -192,10 +201,18 @@ if __name__ == "__main__":
 	# Dirs
 	parser.add_argument("--log_dir", type=str, default="logs", \
 					 help='path of log files')
-	parser.add_argument("--trainset_dir", type=str, default=None, \
-					 help='path of trainset')
-	parser.add_argument("--valset_dir", type=str, default=None, \
+	parser.add_argument("--trainset_dir_noisy", type=str, default=None, \
+					 help='path of noisy trainset')
+	parser.add_argument("--trainset_dir_denoised", type=str, default=None, \
+						help='path of denoised trainset')
+	parser.add_argument("--trainset_dir_original", type=str, default=None, \
+						help='path of original trainset')
+	parser.add_argument("--valset_dir_noisy", type=str, default=None, \
 						 help='path of validation set')
+	parser.add_argument("--valset_dir_denoised", type=str, default=None, \
+						help='path of validation set')
+	parser.add_argument("--valset_dir_original", type=str, default=None, \
+						help='path of validation set')
 	argspar = parser.parse_args()
 
 	# Normalize noise between [0, 1]

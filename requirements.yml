@@ -10,7 +10,7 @@ dependencies:
   - pycodestyle=2.5.0
   - pytest=5.4.1
   - python=3.6.10
-  - pytorch=1.0.0
+  - pytorch=1.1.0
   - scikit-image=0.16.2
   - torchvision=0.2.1
   - pip:

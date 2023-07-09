@@ -101,21 +101,28 @@ def test_fastdvdnet(**args):
         seq = torch.from_numpy(seq).to(device)
         seq_time = time.time()
 
+        # Original clean images processing
+        seqt, _, _ = open_sequence(args['target_path'], \
+                                   args['gray'], \
+                                   expand_if_needed=False, \
+                                   max_num_fr=args['max_num_fr_per_seq'])
+        seqt = torch.from_numpy(seqt).to(device)
+
         # Add noise
-        noise = torch.empty_like(seq).normal_(
-            mean=0, std=args['noise_sigma']).to(device)
-        seqn = seq + noise
+        #noise = torch.empty_like(seq).normal_(
+        #    mean=0, std=args['noise_sigma']).to(device)
+        #seqn = seq + noise
         noisestd = torch.FloatTensor([args['noise_sigma']]).to(device)
 
-        denframes = denoise_seq_fastdvdnet(seq=seqn,
+        denframes = denoise_seq_fastdvdnet(seq=seq,
                                            noise_std=noisestd,
                                            temp_psz=NUM_IN_FR_EXT,
                                            model_temporal=model_temp)
 
     # Compute PSNR and log it
     stop_time = time.time()
-    psnr = batch_psnr(denframes, seq, 1.)
-    psnr_noisy = batch_psnr(seqn.squeeze(), seq, 1.)
+    psnr = batch_psnr(denframes, seqt, 1.)
+    psnr_noisy = batch_psnr(seq.squeeze(), seqt, 1.)
     loadtime = (seq_time - start_time)
     runtime = (stop_time - seq_time)
     seq_length = seq.size()[0]
@@ -128,7 +135,7 @@ def test_fastdvdnet(**args):
     # Save outputs
     if not args['dont_save_results']:
         # Save sequence
-        save_out_seq(seqn, denframes, args['save_path'],
+        save_out_seq(seq, denframes, args['save_path'],
                      int(args['noise_sigma']*255), args['suffix'], args['save_noisy'])
 
     # close logger
@@ -160,6 +167,8 @@ if __name__ == "__main__":
                         help='where to save outputs as png')
     parser.add_argument("--gray", action='store_true',
                         help='perform denoising of grayscale images instead of RGB')
+    parser.add_argument("--target_path", type=str, default="./data/rgb/Kodak24", \
+                        help='path to initial sequence before noise addition')
 
     argspar = parser.parse_args()
     # Normalize noises ot [0, 1]

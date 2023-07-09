@@ -22,9 +22,24 @@ VALSEQPATT = '*' # pattern for name of validation sequence
 class ValDataset(Dataset):
 	"""Validation dataset. Loads all the images in the dataset folder on memory.
 	"""
-	def __init__(self, valsetdir=None, gray_mode=False, num_input_frames=NUMFRXSEQ_VAL):
+	def __init__(self, valsetdir_noisy=None, valsetdir_denoised=None, valsetdir_original=None, gray_mode=False, num_input_frames=NUMFRXSEQ_VAL):
 		self.gray_mode = gray_mode
 
+		self.noisy_sequences = self.loadSequences(valsetdir_noisy, gray_mode, num_input_frames)
+		self.denoised_sequences = self.loadSequences(valsetdir_denoised, gray_mode, num_input_frames)
+		self.original_sequences = self.loadSequences(valsetdir_original, gray_mode, num_input_frames)
+
+	def __getitem__(self, index):
+		noisy = torch.from_numpy(self.noisy_sequences[index])
+		denoised = torch.from_numpy(self.denoised_sequences[index])
+		original = torch.from_numpy(self.original_sequences[index])
+
+		return noisy, denoised, original
+
+	def __len__(self):
+		return len(self.original_sequences)
+
+	def loadSequences(self, valsetdir=None, gray_mode=False, num_input_frames=NUMFRXSEQ_VAL):
 		# Look for subdirs with individual sequences
 		seqs_dirs = sorted(glob.glob(os.path.join(valsetdir, VALSEQPATT)))
 
@@ -32,14 +47,8 @@ class ValDataset(Dataset):
 		sequences = []
 		for seq_dir in seqs_dirs:
 			seq, _, _ = open_sequence(seq_dir, gray_mode, expand_if_needed=False, \
-							 max_num_fr=num_input_frames)
+									  max_num_fr=num_input_frames)
 			# seq is [num_frames, C, H, W]
 			sequences.append(seq)
 
-		self.sequences = sequences
-
-	def __getitem__(self, index):
-		return torch.from_numpy(self.sequences[index])
-
-	def __len__(self):
-		return len(self.sequences)
+		return sequences

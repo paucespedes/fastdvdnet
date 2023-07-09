@@ -117,16 +117,12 @@ def validate_and_log(model_temp, dataset_val, valnoisestd, temp_psz, writer, \
 	t1 = time.time()
 	psnr_val = 0
 	with torch.no_grad():
-		for seq_val in dataset_val:
-			noise = torch.FloatTensor(seq_val.size()).normal_(mean=0, std=valnoisestd)
-			seqn_val = seq_val + noise
-			seqn_val = seqn_val.cuda()
-			sigma_noise = torch.cuda.FloatTensor([valnoisestd])
-			out_val = denoise_seq_fastdvdnet(seq=seqn_val, \
-											noise_std=sigma_noise, \
+		for noisy_seq, denoised_seq, original_seq in dataset_val:
+			out_val = denoise_seq_fastdvdnet(noisyseq=noisy_seq,\
+											denoisedseq=denoised_seq,\
 											temp_psz=temp_psz,\
 											model_temporal=model_temp)
-			psnr_val += batch_psnr(out_val.cpu(), seq_val.squeeze_(), 1.)
+			psnr_val += batch_psnr(out_val.cpu(), original_seq.squeeze_(), 1.)
 		psnr_val /= len(dataset_val)
 		t2 = time.time()
 		print("\n[epoch %d] PSNR_val: %.4f, on %.2f sec" % (epoch+1, psnr_val, (t2-t1)))
@@ -145,17 +141,20 @@ def validate_and_log(model_temp, dataset_val, valnoisestd, temp_psz, writer, \
 			writer.add_image('Training patches', img, epoch)
 
 			# Log validation images
-			img = tutils.make_grid(seq_val.data[idx].clamp(0., 1.),\
+			img = tutils.make_grid(original_seq.data[idx].clamp(0., 1.),\
 									nrow=2, normalize=False, scale_each=False)
-			imgn = tutils.make_grid(seqn_val.data[idx].clamp(0., 1.),\
+			imgn = tutils.make_grid(noisy_seq.data[idx].clamp(0., 1.),\
+									nrow=2, normalize=False, scale_each=False)
+			imgdnsd = tutils.make_grid(denoised_seq.data[idx].clamp(0., 1.), \
 									nrow=2, normalize=False, scale_each=False)
 			writer.add_image('Clean validation image {}'.format(idx), img, epoch)
 			writer.add_image('Noisy validation image {}'.format(idx), imgn, epoch)
+			writer.add_image('Classical algorithm denoised image {}'.format(idx), imgdnsd, epoch)
 
 		# Log validation results
 		irecon = tutils.make_grid(out_val.data[idx].clamp(0., 1.),\
 								nrow=2, normalize=False, scale_each=False)
-		writer.add_image('Reconstructed validation image {}'.format(idx), irecon, epoch)
+		writer.add_image('Final reconstructed validation image {}'.format(idx), irecon, epoch)
 
 	except Exception as e:
 		logger.error("validate_and_log_temporal(): Couldn't log results, {}".format(e))
