@@ -24,12 +24,12 @@ from tensorboardX import SummaryWriter
 
 IMAGETYPES = ('*.bmp', '*.png', '*.jpg', '*.jpeg', '*.tif') # Supported image types
 
-def normalize_augment(datain, ctrl_fr_idx):
+def normalize_augment(datain_o, datain_n, datain_d, ctrl_fr_idx):
 	'''Normalizes and augments an input patch of dim [N, num_frames, C. H, W] in [0., 255.] to \
 		[N, num_frames*C. H, W] in  [0., 1.]. It also returns the central frame of the temporal \
 		patch as a ground truth.
 	'''
-	def transform(sample):
+	def transform_selector():
 		# define transformations
 		do_nothing = lambda x: x
 		do_nothing.__name__ = 'do_nothing'
@@ -55,22 +55,31 @@ def normalize_augment(datain, ctrl_fr_idx):
 		aug_list = [do_nothing, flipud, rot90, rot90_flipud, \
 					rot180, rot180_flipud, rot270, rot270_flipud, add_csnt]
 		w_aug = [32, 12, 12, 12, 12, 12, 12, 12, 12] # one fourth chances to do_nothing
-		transf = choices(aug_list, w_aug)
+		return choices(aug_list, w_aug)
 
-		# transform all images in array
-		return transf[0](sample)
+	img_train_o = datain_o
+	img_train_n = datain_n
+	img_train_d = datain_d
 
-	img_train = datain
 	# convert to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
-	img_train = img_train.view(img_train.size()[0], -1, \
-							   img_train.size()[-2], img_train.size()[-1]) / 255.
+	img_train_o = img_train_o.view(img_train_o.size()[0], -1, \
+							   img_train_o.size()[-2], img_train_o.size()[-1]) / 255.
+	img_train_d = img_train_d.view(img_train_d.size()[0], -1, \
+								 img_train_d.size()[-2], img_train_d.size()[-1]) / 255.
+	img_train_n = img_train_n.view(img_train_n.size()[0], -1, \
+								 img_train_n.size()[-2], img_train_n.size()[-1]) / 255.
 
 	#augment
-	img_train = transform(img_train)
+	transf = transform_selector()
+	img_train_o = transf[0](img_train_o)
+	img_train_d = transf[0](img_train_d)
+	img_train_n = transf[0](img_train_n)
 
 	# extract ground truth (central frame)
-	gt_train = img_train[:, 3*ctrl_fr_idx:3*ctrl_fr_idx+3, :, :]
-	return img_train, gt_train
+	gt_train_o = img_train_o[:, 3*ctrl_fr_idx:3*ctrl_fr_idx+3, :, :]
+	gt_train_n = img_train_n[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+	gt_train_d = img_train_d[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+	return img_train_o, img_train_n, img_train_d, gt_train_o, gt_train_n, gt_train_d
 
 def init_logging(argdict):
 	"""Initilizes the logging and the SummaryWriter modules

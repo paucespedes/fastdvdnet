@@ -39,40 +39,43 @@ class VideoReaderPipeline(Pipeline):
 				Frame interval between each sequence (if `step` < 0, `step` is set to `sequence_length`).
 	'''
 	def __init__(self, batch_size, sequence_length, num_threads, device_id, files_noisy,
-				 files_denoised, files_original, crop_size, random_shuffle=False, step=-1):
-		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id, seed=12)
+				 files_denoised, files_original, crop_size, step=-1):
+		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id, seed=13313)
 		# Define VideoReader for noisy videos
 		self.reader_noisy = ops.VideoReader(device="gpu",
 											filenames=files_noisy,
 											sequence_length=sequence_length,
 											normalized=False,
-											random_shuffle=random_shuffle,
+											random_shuffle=False,
 											image_type=types.DALIImageType.RGB,
 											dtype=types.DALIDataType.UINT8,
 											step=step,
-											initial_fill=16)
+											initial_fill=16,
+											pad_last_batch=True)
 
 		# Define VideoReader for denoised videos
 		self.reader_denoised = ops.VideoReader(device="gpu",
 											filenames=files_denoised,
 											sequence_length=sequence_length,
 											normalized=False,
-											random_shuffle=random_shuffle,
+											random_shuffle=False,
 											image_type=types.DALIImageType.RGB,
 											dtype=types.DALIDataType.UINT8,
 											step=step,
-											initial_fill=16)
+											initial_fill=16,
+											pad_last_batch=True)
 
 		# Define VideoReader for denoised videos
 		self.reader_original = ops.VideoReader(device="gpu",
 											   filenames=files_original,
 											   sequence_length=sequence_length,
 											   normalized=False,
-											   random_shuffle=random_shuffle,
+											   random_shuffle=False,
 											   image_type=types.DALIImageType.RGB,
 											   dtype=types.DALIDataType.UINT8,
 											   step=step,
-											   initial_fill=16)
+											   initial_fill=16,
+											   pad_last_batch=True)
 
 		# Define crop and permute operations to apply to every sequence
 		self.crop = ops.CropMirrorNormalize(device="gpu",
@@ -86,12 +89,14 @@ class VideoReaderPipeline(Pipeline):
 		'''Definition of the graph--events that will take place at every sampling of the dataloader.
 		The random crop and permute operations will be applied to the sampled sequence.
 		'''
+		x_pos = self.uniform()
+		y_pos = self.uniform()
 		input_noisy = self.reader_noisy(name="ReaderNoisy")
 		input_denoised = self.reader_denoised(name="ReaderDenoised")
 		input_original = self.reader_original(name="ReaderOriginal")
-		cropped_noisy = self.crop(input_noisy, crop_pos_x=self.uniform(), crop_pos_y=self.uniform())
-		cropped_denoised = self.crop(input_denoised, crop_pos_x=self.uniform(), crop_pos_y=self.uniform())
-		cropped_original = self.crop(input_original, crop_pos_x=self.uniform(), crop_pos_y=self.uniform())
+		cropped_noisy = self.crop(input_noisy, crop_pos_x=x_pos, crop_pos_y=y_pos)
+		cropped_denoised = self.crop(input_denoised, crop_pos_x=x_pos, crop_pos_y=y_pos)
+		cropped_original = self.crop(input_original, crop_pos_x=x_pos, crop_pos_y=y_pos)
 		return cropped_noisy, cropped_denoised, cropped_original
 
 class train_dali_loader():
@@ -115,7 +120,7 @@ class train_dali_loader():
 	'''
 
 	def __init__(self, batch_size, noisy_file_root, denoised_file_root, original_file_root, sequence_length,
-				 crop_size, epoch_size=-1, random_shuffle=False, temp_stride=-1):
+				 crop_size, epoch_size=-1, temp_stride=-1):
 		# Builds list of sequence filenames
 		container_noisy_files = os.listdir(noisy_file_root)
 		container_noisy_files = [noisy_file_root + '/' + f for f in container_noisy_files]
@@ -135,13 +140,12 @@ class train_dali_loader():
 											files_denoised=container_denoised_files,
 											files_original=container_original_files,
 											crop_size=crop_size,
-											random_shuffle=random_shuffle,
-											step=temp_stride)
+											step=temp_stride,)
 		self.pipeline.build()
 
 		# Define size of epoch
 		if epoch_size <= 0:
-			self.epoch_size = self.pipeline.epoch_size("Reader")
+			self.epoch_size = self.pipeline.epoch_size("ReaderNoisy")
 		else:
 			self.epoch_size = epoch_size
 		self.dali_iterator = pytorch.DALIGenericIterator(pipelines=self.pipeline,

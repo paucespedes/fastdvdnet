@@ -21,6 +21,13 @@ from dataloaders import train_dali_loader
 from utils import svd_orthogonalization, close_logger, init_logging, normalize_augment
 from train_common import resume_training, lr_scheduler, log_train_psnr, \
 					validate_and_log, save_model_checkpoint
+from PIL import Image
+import imagehash as imghash
+import numpy as np
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+import gc
 
 def main(**args):
 	r"""Performs the main training loop
@@ -39,7 +46,6 @@ def main(**args):
 									sequence_length=args['temp_patch_size'],\
 									crop_size=args['patch_size'],\
 									epoch_size=args['max_number_patches'],\
-									random_shuffle=True,\
 									temp_stride=3)
 
 	num_minibatches = int(args['max_number_patches']//args['batch_size'])
@@ -81,6 +87,7 @@ def main(**args):
 		print('\nlearning rate %f' % current_lr)
 
 		# train
+		eventHorizonCrossed = False
 
 		for i, data in enumerate(loader_train, 0):
 			# Pre-training step
@@ -91,10 +98,53 @@ def main(**args):
 
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
 			# extract ground truth (central frame)
-			imgo_train, gt_train = normalize_augment(data[0]['data_original'], ctrl_fr_idx)
-			imgn_train, _ = normalize_augment(data[0]['data_noisy'], ctrl_fr_idx)
-			imgd_train, _ = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
+			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0]['data_original'], \
+																						 data[0]['data_noisy'], \
+																						 data[0]['data_denoised'], \
+																						 ctrl_fr_idx)
+			# imgo_train, gt_train = normalize_augment(data[0]['data_original'], ctrl_fr_idx)
+			# imgn_train, gt_n = normalize_augment(data[0]['data_noisy'], ctrl_fr_idx)
+			# imgd_train, gt_d = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
 			N, _, H, W = imgn_train.size()
+
+			# dd = data[0]['data_denoised']
+			# dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
+			# dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			#
+			# dn = data[0]['data_noisy']
+			# dn = dn.view(dn.size()[0], -1, dn.size()[-2], dn.size()[-1]) / 255.
+			# dn = dn[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			#
+			# do = data[0]['data_original']
+			# do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
+			# do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+
+			# if(do.size() != dd.size()):
+			# 	print("Sizes differ {} to {}".format(dd.size(), do.size()))
+			#
+			# if(areImagesDesincronized(do[0], dd[0])):
+			# 	eventHorizonCrossed = True
+			# 	print("AAAAAAAAAAAAAAAAA")
+
+			# if(eventHorizonCrossed):
+				# showImage(do[0], "1 {}. Original from pipeline: ".format(training_params['step']))
+				# showImage(do[1], "2 {}. Original from pipeline: ".format(training_params['step']))
+				# showImage(do[2], "3 {}. Original from pipeline: ".format(training_params['step']))
+				# showImage(dd[0], "1 {}. Denoised from pipeline: ".format(training_params['step']))
+				# showImage(dd[1], "2 {}. Denoised from pipeline: ".format(training_params['step']))
+				# showImage(dd[2], "3 {}. Denoised from pipeline: ".format(training_params['step']))
+
+			# if training_params['step'] % 200 == 0:
+				# showImage(do[0], "{}. Original from pipeline: ".format(training_params['step']/200))
+				# showImage(dd[0], "{}. Denoised from pipeline: ".format(training_params['step']/200))
+				# showImage(dn[0], "{}. Noisy from pipeline: ".format(training_params['step'] / 200))
+				# showImage(dd[1], "2. Denoised from pipeline: ")
+				# showImage(dd[2], "3. Denoised from pipeline: ")
+				# showImage(dn[1], "2. Noisy from pipeline: ")
+				# showImage(dn[2], "3. Noisy from pipeline: ")
+				# showImage(gt_train[0], "GT0")
+				# showImage(gt_n[0], "GTN")
+				# showImage(gt_d[0], "GTD")
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
@@ -103,6 +153,8 @@ def main(**args):
 
 			# Evaluate model and optimize it
 			out_train = model(imgn_train, imgd_train)
+			# if training_params['step'] > 1000:
+			# 	showImage(out_train[0], "OUT0")
 
 			# Compute loss
 			loss = criterion(gt_train, out_train) / (N*2)
@@ -160,12 +212,53 @@ def main(**args):
 		training_params['start_epoch'] = epoch + 1
 		save_model_checkpoint(model, args, optimizer, training_params, epoch)
 
+
+
 	# Print elapsed time
 	elapsed_time = time.time() - start_time
 	print('Elapsed time {}'.format(time.strftime("%H:%M:%S", time.gmtime(elapsed_time))))
 
 	# Close logger file
 	close_logger(logger)
+
+def showImage(img, t):
+	image = img.cpu()  # Extract the image at index i
+
+	# Assuming the tensor is in [0, 1] range, you can convert it to [0, 255] range
+	image = (image * 255).byte()
+
+	# Convert tensor to numpy array and rearrange dimensions from [C, H, W] to [H, W, C]
+	image = image.permute(1, 2, 0).numpy()
+
+	# Display the image
+	plt.imshow(image)
+	plt.title(f"Image {t}")
+	plt.show()
+
+def areImagesDesincronized(img1, img2):
+	image1 = img1.cpu()  # Extract the image at index i
+	image1 = (image1 * 255).byte()
+	image1 = image1.permute(1, 2, 0).numpy()
+	i1 = Image.fromarray(image1)
+
+	image2 = img2.cpu()  # Extract the image at index i
+	image2 = (image2 * 255).byte()
+	image2 = image2.permute(1, 2, 0).numpy()
+	i2 = Image.fromarray(image2)
+
+	hash0 = imghash.average_hash(i1)
+	hash1 = imghash.average_hash(i2)
+
+	cutoff = 20  # maximum bits that could be different between the hashes.
+	diff = hash0 - hash1
+
+	if diff >= cutoff:
+		#plt.imshow(i1)
+		#plt.show()
+		#plt.imshow(i2)
+		#plt.show()
+		return True
+	return False
 
 if __name__ == "__main__":
 

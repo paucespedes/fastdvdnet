@@ -45,7 +45,6 @@ def denoise_seq_fastdvdnet(noisyseq, denoisedseq, temp_psz, model_temporal):
 	"""
 	# init arrays to handle contiguous frames and related patches
 	numframes, C, H, W = noisyseq.shape
-	numframesd, Cd, Hd, Wd = denoisedseq.shape
 	ctrlfr_idx = int((temp_psz-1)//2)
 	inframes_noisy = list()
 	inframes_denoised = list()
