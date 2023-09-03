@@ -36,12 +36,9 @@ class InputCvBlock(nn.Module):
 	'''
 	def __init__(self, num_in_frames, out_ch, is_block_2=False):
 		super(InputCvBlock, self).__init__()
-		block_multiplier = 2
-		if is_block_2:
-			block_multiplier = 1
 		self.interm_ch = 30
 		self.convblock = nn.Sequential(
-			nn.Conv2d(num_in_frames*(3 * block_multiplier), num_in_frames*self.interm_ch, \
+			nn.Conv2d(num_in_frames*(6), num_in_frames*self.interm_ch, \
 					  kernel_size=3, padding=1, groups=num_in_frames, bias=False),
 			nn.BatchNorm2d(num_in_frames*self.interm_ch),
 			nn.ReLU(inplace=True),
@@ -144,76 +141,22 @@ class DenBlock(nn.Module):
 		x = self.outc(x0+x1)
 
 		# Residual
-		x = (in1 + den_in_1)/2 - x
+		in_x = in1 - x
+		den_in_x = den_in_1 - x
 
-		return x
-
-class DenBlock2(nn.Module):
-	""" Definition of the denosing block of FastDVDnet.
-	Inputs of constructor:
-		num_input_frames: int. number of input frames
-	Inputs of forward():
-		xn: input frames of dim [N, C, H, W], (C=3 RGB)
-		noise_map: array with noise map of dim [N, 1, H, W]
-	"""
-
-	def __init__(self, num_input_frames=3):
-		super(DenBlock2, self).__init__()
-		self.chs_lyr0 = 32
-		self.chs_lyr1 = 64
-		self.chs_lyr2 = 128
-
-		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0, is_block_2=True)
-		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
-		self.downc1 = DownBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr2)
-		self.upc2 = UpBlock(in_ch=self.chs_lyr2, out_ch=self.chs_lyr1)
-		self.upc1 = UpBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr0)
-		self.outc = OutputCvBlock(in_ch=self.chs_lyr0, out_ch=3)
-
-		self.reset_params()
-
-	@staticmethod
-	def weight_init(m):
-		if isinstance(m, nn.Conv2d):
-			nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
-
-	def reset_params(self):
-		for _, m in enumerate(self.modules()):
-			self.weight_init(m)
-
-	def forward(self, in0, in1, in2):
-		'''Args:
-			in_X: Tensor, [N, C, H, W] in the [0., 1.] range
-			den_in_X: Tensor, [N, C, H, W] in the [0., 1.] range
-		'''
-		# Input convolution block
-		x0 = self.inc(torch.cat((in0, in1, in2), dim=1))
-		# Downsampling
-		x1 = self.downc0(x0)
-		x2 = self.downc1(x1)
-		# Upsampling
-		x2 = self.upc2(x2)
-		x1 = self.upc1(x1+x2)
-		# Estimation
-		x = self.outc(x0+x1)
-
-		# Residual
-		x = in1 - x
-
-		return x
+		return in_x, den_in_x
 
 class FastDVDnet(nn.Module):
 	""" Definition of the FastDVDnet model.
 	Inputs of forward():
 		xn: input frames of dim [N, C, H, W], (C=3 RGB)
 	"""
-
 	def __init__(self, num_input_frames=5):
 		super(FastDVDnet, self).__init__()
 		self.num_input_frames = num_input_frames
 		# Define models of each denoising stage
 		self.temp1 = DenBlock(num_input_frames=3)
-		self.temp2 = DenBlock2(num_input_frames=3)
+		self.temp2 = DenBlock(num_input_frames=3)
 		# Init weights
 		self.reset_params()
 
@@ -241,12 +184,13 @@ class FastDVDnet(nn.Module):
 		# self.show_Frames(den_x0, "DEN_X0")
 
 		# First stage
-		x20 = self.temp1(x0, x1, x2, den_x0, den_x1, den_x2)
-		x21 = self.temp1(x1, x2, x3, den_x1, den_x2, den_x3)
-		x22 = self.temp1(x2, x3, x4, den_x2, den_x3, den_x4)
+		in_x20, den_in_x20 = self.temp1(x0, x1, x2, den_x0, den_x1, den_x2)
+		in_x21, den_in_x21 = self.temp1(x1, x2, x3, den_x1, den_x2, den_x3)
+		in_x22, den_in_x22 = self.temp1(x2, x3, x4, den_x2, den_x3, den_x4)
 
 		#Second stage
-		x = self.temp2(x20, x21, x22)
+		in_x, den_in_x = self.temp2(in_x20, den_in_x20, in_x21, den_in_x21, in_x22, den_in_x22)
+		x = (in_x + den_in_x) / 2
 
 		return x
 	def show_Frames(self, x, t):
