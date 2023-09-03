@@ -146,13 +146,16 @@ def main(**args):
 				# showImage(gt_n[0], "GTN")
 				# showImage(gt_d[0], "GTD")
 
+			# Calculate the noise map
+			noise_map = imgd_train - imgo_train
+
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
 			imgn_train = imgn_train.cuda(non_blocking=True)
 			imgd_train = imgd_train.cuda(non_blocking=True)
 
 			# Evaluate model and optimize it
-			out_train = model(imgn_train, imgd_train)
+			out_train = model(imgn_train, imgd_train, noise_map)
 			# if training_params['step'] > 1000:
 			# 	showImage(out_train[0], "OUT0")
 
