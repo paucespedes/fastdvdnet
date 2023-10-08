@@ -144,7 +144,7 @@ class DenBlock(nn.Module):
 		x = self.outc(x0+x1)
 
 		# Residual
-		x = in1 - x
+		x = den_in_1 - x
 
 		return x
 

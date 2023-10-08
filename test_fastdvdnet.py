@@ -101,6 +101,13 @@ def test_fastdvdnet(**args):
         seq = torch.from_numpy(seq).to(device)
         seq_time = time.time()
 
+        seqd, _, _ = open_sequence(args['classic_denoised_path'],
+                                  args['gray'],
+                                  expand_if_needed=False,
+                                  max_num_fr=args['max_num_fr_per_seq'])
+        seqd = torch.from_numpy(seqd).to(device)
+        seqd_time = time.time()
+
         # Original clean images processing
         seqt, _, _ = open_sequence(args['target_path'], \
                                    args['gray'], \
@@ -114,8 +121,8 @@ def test_fastdvdnet(**args):
         #seqn = seq + noise
         noisestd = torch.FloatTensor([args['noise_sigma']]).to(device)
 
-        denframes = denoise_seq_fastdvdnet(seq=seq,
-                                           noise_std=noisestd,
+        denframes = denoise_seq_fastdvdnet(noisyseq=seq,
+                                           denoisedseq=seqd,
                                            temp_psz=NUM_IN_FR_EXT,
                                            model_temporal=model_temp)
 
@@ -150,7 +157,9 @@ if __name__ == "__main__":
                         default="./model.pth",
                         help='path to model of the pretrained denoiser')
     parser.add_argument("--test_path", type=str, default="./data/rgb/Kodak24",
-                        help='path to sequence to denoise')
+                        help='path to noisy sequence to denoise')
+    parser.add_argument("--classic_denoised_path", type=str, default="./data/rgb/Kodak24",
+                        help='path to classically denoised sequence to denoise')
     parser.add_argument("--suffix", type=str, default="",
                         help='suffix to add to output name')
     parser.add_argument("--max_num_fr_per_seq", type=int, default=25,
