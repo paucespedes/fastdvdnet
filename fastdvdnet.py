@@ -5,6 +5,8 @@ FastDVDnet denoising algorithm
 """
 import torch
 import torch.nn.functional as F
+import numpy as np
+import cv2
 
 def temp_denoise(model, noisyframe, denoisedframe):
 	'''Encapsulates call to denoising model and handles padding.
@@ -80,3 +82,20 @@ def denoise_seq_fastdvdnet(noisyseq, denoisedseq, temp_psz, model_temporal):
 
 	# convert to appropiate type and return
 	return denframes
+
+# CODI VISUALITZAR IMATGE
+def visualizeImageTensor(tensor):
+	# Assuming tensor is your input tensor with shape (1, 15, 480, 912) and values between 0 and 1
+	# Convert the tensor to a NumPy array
+	tensor_np = tensor.squeeze().cpu().numpy()  # Squeeze removes the singleton dimension (1)
+
+	# Create an image from the array by scaling the values back to 0-255 range
+	image_array = (tensor_np * 255).astype(np.uint8)
+
+	# Create a 3-channel image from the single-channel array
+	image = cv2.merge([image_array] * 3)
+
+	# Display the image
+	cv2.imshow('Image', image)
+	cv2.waitKey(0)  # Wait until a key is pressed
+	cv2.destroyAllWindows()  # Close the window

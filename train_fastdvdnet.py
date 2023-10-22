@@ -28,6 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import gc
+from datetime import datetime
 
 def main(**args):
 	r"""Performs the main training loop
@@ -107,17 +108,17 @@ def main(**args):
 			# imgd_train, gt_d = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
 			N, _, H, W = imgn_train.size()
 
-			# dd = data[0]['data_denoised']
-			# dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
-			# dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			dd = data[0]['data_denoised']
+			dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
+			dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 			#
 			# dn = data[0]['data_noisy']
 			# dn = dn.view(dn.size()[0], -1, dn.size()[-2], dn.size()[-1]) / 255.
 			# dn = dn[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 			#
-			# do = data[0]['data_original']
-			# do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
-			# do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			do = data[0]['data_original']
+			do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
+			do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 
 			# if(do.size() != dd.size()):
 			# 	print("Sizes differ {} to {}".format(dd.size(), do.size()))
@@ -145,6 +146,9 @@ def main(**args):
 				# showImage(gt_train[0], "GT0")
 				# showImage(gt_n[0], "GTN")
 				# showImage(gt_d[0], "GTD")
+
+			if training_params['step'] % 20 == 0:
+				areImagesDesincronized(do[0], dd[0], training_params['step'], epoch)
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
@@ -213,7 +217,6 @@ def main(**args):
 		save_model_checkpoint(model, args, optimizer, training_params, epoch)
 
 
-
 	# Print elapsed time
 	elapsed_time = time.time() - start_time
 	print('Elapsed time {}'.format(time.strftime("%H:%M:%S", time.gmtime(elapsed_time))))
@@ -235,7 +238,7 @@ def showImage(img, t):
 	plt.title(f"Image {t}")
 	plt.show()
 
-def areImagesDesincronized(img1, img2):
+def areImagesDesincronized(img1, img2, step, epoch):
 	image1 = img1.cpu()  # Extract the image at index i
 	image1 = (image1 * 255).byte()
 	image1 = image1.permute(1, 2, 0).numpy()
@@ -249,14 +252,18 @@ def areImagesDesincronized(img1, img2):
 	hash0 = imghash.average_hash(i1)
 	hash1 = imghash.average_hash(i2)
 
-	cutoff = 20  # maximum bits that could be different between the hashes.
-	diff = hash0 - hash1
+	cutoff = 30  # maximum bits that could be different between the hashes.
+	diff = abs(hash0 - hash1)
 
 	if diff >= cutoff:
-		#plt.imshow(i1)
-		#plt.show()
-		#plt.imshow(i2)
-		#plt.show()
+		print('Iajuuuuu')
+		f = open("/home/pau/TFG/logs/NEWLOGS/desync-finder/log/desync-info.txt", "a")
+		f.write("-Desync at step {0} of epoch {1} (hash diff {2})\n".format(step, epoch, diff))
+		f.close()
+
+		current_datetime = datetime.now().strftime("%d_%m_%Y-%H_%M_%S")
+		i1.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/original/{0}.jpg'.format(current_datetime), 'JPEG')
+		i2.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/denoised/{0}.jpg'.format(current_datetime), 'JPEG')
 		return True
 	return False
 

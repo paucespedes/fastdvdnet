@@ -40,7 +40,7 @@ class VideoReaderPipeline(Pipeline):
 	'''
 	def __init__(self, batch_size, sequence_length, num_threads, device_id, files_noisy,
 				 files_denoised, files_original, crop_size, step=-1):
-		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id, seed=13313)
+		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id)
 		# Define VideoReader for noisy videos
 		self.reader_noisy = ops.VideoReader(device="gpu",
 											filenames=files_noisy,
