@@ -80,7 +80,7 @@ def test_fastdvdnet(**args):
     model_temp = FastDVDnet(num_input_frames=NUM_IN_FR_EXT)
 
     # Load saved weights
-    state_temp_dict = torch.load(args['model_file'])
+    state_temp_dict = torch.load(args['model_file'], map_location=device)
     if args['cuda']:
         device_ids = [0]
         model_temp = nn.DataParallel(model_temp, device_ids=device_ids).cuda()
@@ -121,8 +121,8 @@ def test_fastdvdnet(**args):
         #seqn = seq + noise
         noisestd = torch.FloatTensor([args['noise_sigma']]).to(device)
 
-        denframes = denoise_seq_fastdvdnet(noisyseq=seq,
-                                           denoisedseq=seqd,
+        denframes = denoise_seq_fastdvdnet(seq=seq,
+                                           noise_std=noisestd,
                                            temp_psz=NUM_IN_FR_EXT,
                                            model_temporal=model_temp)
 

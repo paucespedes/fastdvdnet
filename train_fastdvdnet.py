@@ -107,54 +107,20 @@ def main(**args):
 			# imgd_train, gt_d = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
 			N, _, H, W = imgn_train.size()
 
-			# dd = data[0]['data_denoised']
-			# dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
-			# dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
-			#
-			# dn = data[0]['data_noisy']
-			# dn = dn.view(dn.size()[0], -1, dn.size()[-2], dn.size()[-1]) / 255.
-			# dn = dn[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
-			#
-			# do = data[0]['data_original']
-			# do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
-			# do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
-
-			# if(do.size() != dd.size()):
-			# 	print("Sizes differ {} to {}".format(dd.size(), do.size()))
-			#
-			# if(areImagesDesincronized(do[0], dd[0])):
-			# 	eventHorizonCrossed = True
-			# 	print("AAAAAAAAAAAAAAAAA")
-
-			# if(eventHorizonCrossed):
-				# showImage(do[0], "1 {}. Original from pipeline: ".format(training_params['step']))
-				# showImage(do[1], "2 {}. Original from pipeline: ".format(training_params['step']))
-				# showImage(do[2], "3 {}. Original from pipeline: ".format(training_params['step']))
-				# showImage(dd[0], "1 {}. Denoised from pipeline: ".format(training_params['step']))
-				# showImage(dd[1], "2 {}. Denoised from pipeline: ".format(training_params['step']))
-				# showImage(dd[2], "3 {}. Denoised from pipeline: ".format(training_params['step']))
-
-			# if training_params['step'] % 200 == 0:
-				# showImage(do[0], "{}. Original from pipeline: ".format(training_params['step']/200))
-				# showImage(dd[0], "{}. Denoised from pipeline: ".format(training_params['step']/200))
-				# showImage(dn[0], "{}. Noisy from pipeline: ".format(training_params['step'] / 200))
-				# showImage(dd[1], "2. Denoised from pipeline: ")
-				# showImage(dd[2], "3. Denoised from pipeline: ")
-				# showImage(dn[1], "2. Noisy from pipeline: ")
-				# showImage(dn[2], "3. Noisy from pipeline: ")
-				# showImage(gt_train[0], "GT0")
-				# showImage(gt_n[0], "GTN")
-				# showImage(gt_d[0], "GTD")
+			# std dev of each sequence
+			stdn = torch.empty((N, 1, 1, 1)).cuda().uniform_(args['noise_ival'][0], to=args['noise_ival'][1])
+			# draw noise samples from std dev tensor
+			noise = torch.zeros_like(img_train)
+			noise = torch.normal(mean=noise, std=stdn.expand_as(noise))
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
 			imgn_train = imgn_train.cuda(non_blocking=True)
-			imgd_train = imgd_train.cuda(non_blocking=True)
+			noise = noise.cuda(non_blocking=True)
+			noise_map = stdn.expand((N, 1, H, W)).cuda(non_blocking=True)  # one channel per image
 
 			# Evaluate model and optimize it
-			out_train = model(imgn_train, imgd_train)
-			# if training_params['step'] > 1000:
-			# 	showImage(out_train[0], "OUT0")
+			out_train = model(imgn_train, noise_map)
 
 			# Compute loss
 			loss = criterion(gt_train, out_train) / (N*2)
