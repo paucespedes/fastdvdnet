@@ -36,13 +36,13 @@ class InputCvBlock(nn.Module):
 	'''
 	def __init__(self, num_in_frames, out_ch, is_block_2=False):
 		super(InputCvBlock, self).__init__()
-		block_multiplier = 2
-		if is_block_2:
-			block_multiplier = 1
+		# block_multiplier = 2
+		# if is_block_2:
+		# 	block_multiplier = 1
 		self.interm_ch = 30
 		self.convblock = nn.Sequential(
-			nn.Conv2d(num_in_frames*(3 * block_multiplier), num_in_frames*self.interm_ch, \
-					  kernel_size=3, padding=1, groups=num_in_frames*block_multiplier, bias=False),
+			nn.Conv2d(num_in_frames*(3), num_in_frames*self.interm_ch, \
+					  kernel_size=3, padding=1, groups=num_in_frames, bias=False),
 			nn.BatchNorm2d(num_in_frames*self.interm_ch),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(num_in_frames*self.interm_ch, out_ch, kernel_size=3, padding=1, bias=False),
@@ -212,7 +212,7 @@ class FastDVDnet(nn.Module):
 		super(FastDVDnet, self).__init__()
 		self.num_input_frames = num_input_frames
 		# Define models of each denoising stage
-		self.temp1 = DenBlock(num_input_frames=3)
+		self.temp1 = DenBlock(num_input_frames=6)
 		self.temp2 = DenBlock2(num_input_frames=3)
 		# Init weights
 		self.reset_params()
