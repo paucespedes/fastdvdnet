@@ -88,7 +88,7 @@ def main(**args):
 		print('\nlearning rate %f' % current_lr)
 
 		# train
-		eventHorizonCrossed = False
+		eventHorizonCrossed = True
 
 		for i, data in enumerate(loader_train, 0):
 			# Pre-training step
@@ -99,7 +99,7 @@ def main(**args):
 
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
 			# extract ground truth (central frame)
-			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0]['data_original'], \
+			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d, is_random_brightness_adjustment = normalize_augment(data[0]['data_original'], \
 																						 data[0]['data_noisy'], \
 																						 data[0]['data_denoised'], \
 																						 ctrl_fr_idx)
@@ -164,6 +164,33 @@ def main(**args):
 			loss = criterion(gt_train, out_train) / (N*2)
 			loss.backward()
 			optimizer.step()
+
+			# WTF is happening???
+			d_or = data[0]['data_original']
+			d_no = data[0]['data_noisy']
+			d_de = data[0]['data_denoised']
+
+			x = d_or.view(d_or.size()[0], -1, d_or.size()[-2], d_or.size()[-1]) / 255.
+			gt_or = x[:, 3 * ctrl_fr_idx: 3 * ctrl_fr_idx + 3,:,:]
+			x = d_no.view(d_no.size()[0], -1, d_no.size()[-2], d_no.size()[-1]) / 255.
+			gt_no = x[:, 3 * ctrl_fr_idx: 3 * ctrl_fr_idx + 3, :, :]
+			x = d_de.view(d_de.size()[0], -1, d_de.size()[-2], d_de.size()[-1]) / 255.
+			gt_de = x[:, 3 * ctrl_fr_idx: 3 * ctrl_fr_idx + 3, :, :]
+
+			# if (loss >= 10 and training_params['step'] > 500) or eventHorizonCrossed:
+			if is_random_brightness_adjustment:
+				showImage(gt_train[0], "GT_Train")
+				showImage(gt_n[0], "GT_Noisy")
+				showImage(gt_d[0], "GT_Denoised")
+
+				# showImage(gt_or[0], "PRE-TRANSFORM-GT_Train")
+				# showImage(gt_no[0], "PRE-TRANSFORM-GT_Noisy")
+				# showImage(gt_de[0], "PRE-TRANSFORM-GT_Denoised")
+				#
+				# if eventHorizonCrossed:
+				# 	eventHorizonCrossed = True
+				# else:
+				# 	eventHorizonCrossed = True
 
 			# Results
 			if training_params['step'] % args['save_every'] == 0:

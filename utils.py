@@ -24,62 +24,80 @@ from tensorboardX import SummaryWriter
 
 IMAGETYPES = ('*.bmp', '*.png', '*.jpg', '*.jpeg', '*.tif') # Supported image types
 
+
+def transform_selector(*tensors):
+	# define transformations
+	do_nothing = lambda x: x
+	do_nothing.__name__ = 'do_nothing'
+	flipud = lambda x: torch.flip(x, dims=[2])
+	flipud.__name__ = 'flipup'
+	rot90 = lambda x: torch.rot90(x, k=1, dims=[2, 3])
+	rot90.__name__ = 'rot90'
+	rot90_flipud = lambda x: torch.flip(torch.rot90(x, k=1, dims=[2, 3]), dims=[2])
+	rot90_flipud.__name__ = 'rot90_flipud'
+	rot180 = lambda x: torch.rot90(x, k=2, dims=[2, 3])
+	rot180.__name__ = 'rot180'
+	rot180_flipud = lambda x: torch.flip(torch.rot90(x, k=2, dims=[2, 3]), dims=[2])
+	rot180_flipud.__name__ = 'rot180_flipud'
+	rot270 = lambda x: torch.rot90(x, k=3, dims=[2, 3])
+	rot270.__name__ = 'rot270'
+	rot270_flipud = lambda x: torch.flip(torch.rot90(x, k=3, dims=[2, 3]), dims=[2])
+	rot270_flipud.__name__ = 'rot270_flipud'
+	random_brightness_adjustment = lambda x: torch.rand(1).to(x.device)
+	random_brightness_adjustment.__name__ = 'random_brightness_adjustment'
+
+	# In add_csnt case only return random noise so the same noise can be applied to 3 different tensors
+	# add_csnt = lambda x: torch.normal(mean=torch.zeros(x.size()[0], 1, 1, 1), std=(5 / 255.)).to(x.device)
+	# add_csnt.__name__ = 'add_csnt'
+
+	# Check if the selected transformation is add_csnt
+	selected_transformation = choices([do_nothing, flipud, rot90, rot90_flipud, rot180, rot180_flipud, rot270, rot270_flipud, random_brightness_adjustment], weights=[32, 12, 12, 12, 12, 12, 12, 12, 12])[0]
+	# is_add_csnt = selected_transformation.__name__ == 'add_csnt'
+	#
+	# if is_add_csnt:
+	# 	# Generate random noise once
+	# 	random_noise = torch.normal(mean=torch.zeros(tensors[0].size()[0], 1, 1, 1), std=(1 / 255.)).to(tensors[0].device)
+	#
+	# 	# Apply the same random noise to all tensors
+	# 	tensors = [t + random_noise.expand_as(t) for t in tensors]
+
+	is_random_brightness_adjustment = selected_transformation.__name__ == 'random_brightness_adjustment'
+	if is_random_brightness_adjustment:
+	# Generate once random brightnes variation
+		added_brightness = torch.rand(1)
+
+		# Apply the same random noise to all tensors
+		tensors = [t + added_brightness for t in tensors]
+	# else:
+	# 	# Apply the selected transformation to each tensor
+	tensors = [selected_transformation(t) for t in tensors]
+
+	return tensors, is_random_brightness_adjustment
+
 def normalize_augment(datain_o, datain_n, datain_d, ctrl_fr_idx):
 	'''Normalizes and augments an input patch of dim [N, num_frames, C. H, W] in [0., 255.] to \
 		[N, num_frames*C. H, W] in  [0., 1.]. It also returns the central frame of the temporal \
 		patch as a ground truth.
 	'''
-	def transform_selector():
-		# define transformations
-		do_nothing = lambda x: x
-		do_nothing.__name__ = 'do_nothing'
-		flipud = lambda x: torch.flip(x, dims=[2])
-		flipud.__name__ = 'flipup'
-		rot90 = lambda x: torch.rot90(x, k=1, dims=[2, 3])
-		rot90.__name__ = 'rot90'
-		rot90_flipud = lambda x: torch.flip(torch.rot90(x, k=1, dims=[2, 3]), dims=[2])
-		rot90_flipud.__name__ = 'rot90_flipud'
-		rot180 = lambda x: torch.rot90(x, k=2, dims=[2, 3])
-		rot180.__name__ = 'rot180'
-		rot180_flipud = lambda x: torch.flip(torch.rot90(x, k=2, dims=[2, 3]), dims=[2])
-		rot180_flipud.__name__ = 'rot180_flipud'
-		rot270 = lambda x: torch.rot90(x, k=3, dims=[2, 3])
-		rot270.__name__ = 'rot270'
-		rot270_flipud = lambda x: torch.flip(torch.rot90(x, k=3, dims=[2, 3]), dims=[2])
-		rot270_flipud.__name__ = 'rot270_flipud'
-		add_csnt = lambda x: x + torch.normal(mean=torch.zeros(x.size()[0], 1, 1, 1), \
-								 std=(5/255.)).expand_as(x).to(x.device)
-		add_csnt.__name__ = 'add_csnt'
-
-		# define transformations and their frequency, then pick one.
-		aug_list = [do_nothing, flipud, rot90, rot90_flipud, \
-					rot180, rot180_flipud, rot270, rot270_flipud, add_csnt]
-		w_aug = [32, 12, 12, 12, 12, 12, 12, 12, 12] # one fourth chances to do_nothing
-		return choices(aug_list, w_aug)
-
-	img_train_o = datain_o
-	img_train_n = datain_n
-	img_train_d = datain_d
-
 	# convert to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
-	img_train_o = img_train_o.view(img_train_o.size()[0], -1, \
-							   img_train_o.size()[-2], img_train_o.size()[-1]) / 255.
-	img_train_d = img_train_d.view(img_train_d.size()[0], -1, \
-								 img_train_d.size()[-2], img_train_d.size()[-1]) / 255.
-	img_train_n = img_train_n.view(img_train_n.size()[0], -1, \
-								 img_train_n.size()[-2], img_train_n.size()[-1]) / 255.
+	img_train_o = datain_o.view(datain_o.size()[0], -1, \
+							   datain_o.size()[-2], datain_o.size()[-1]) / 255.
+	img_train_d = datain_d.view(datain_d.size()[0], -1, \
+								 datain_d.size()[-2], datain_d.size()[-1]) / 255.
+	img_train_n = datain_n.view(datain_n.size()[0], -1, \
+								 datain_n.size()[-2], datain_n.size()[-1]) / 255.
 
-	#augment
-	transf = transform_selector()
-	img_train_o = transf[0](img_train_o)
-	img_train_d = transf[0](img_train_d)
-	img_train_n = transf[0](img_train_n)
+	# Call the function
+	result_tensors, is_random_brightness_adjustment = transform_selector(img_train_o, img_train_d, img_train_n)
+
+	# Unpack the results
+	img_train_o, img_train_d, img_train_n = result_tensors
 
 	# extract ground truth (central frame)
 	gt_train_o = img_train_o[:, 3*ctrl_fr_idx:3*ctrl_fr_idx+3, :, :]
 	gt_train_n = img_train_n[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 	gt_train_d = img_train_d[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
-	return img_train_o, img_train_n, img_train_d, gt_train_o, gt_train_n, gt_train_d
+	return img_train_o, img_train_n, img_train_d, gt_train_o, gt_train_n, gt_train_d, is_random_brightness_adjustment
 
 def init_logging(argdict):
 	"""Initilizes the logging and the SummaryWriter modules
