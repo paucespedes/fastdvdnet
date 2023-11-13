@@ -47,14 +47,13 @@ def normalize_augment(datain_o, datain_n, datain_d, ctrl_fr_idx):
 		rot270.__name__ = 'rot270'
 		rot270_flipud = lambda x: torch.flip(torch.rot90(x, k=3, dims=[2, 3]), dims=[2])
 		rot270_flipud.__name__ = 'rot270_flipud'
-		add_csnt = lambda x: x + torch.normal(mean=torch.zeros(x.size()[0], 1, 1, 1), \
-								 std=(5/255.)).expand_as(x).to(x.device)
-		add_csnt.__name__ = 'add_csnt'
+		# add_csnt = lambda x: x + torch.normal(mean=torch.zeros(x.size()[0], 1, 1, 1), \
+		# 						 std=(5/255.)).expand_as(x).to(x.device)
+		# add_csnt.__name__ = 'add_csnt'
 
 		# define transformations and their frequency, then pick one.
-		aug_list = [do_nothing, flipud, rot90, rot90_flipud, \
-					rot180, rot180_flipud, rot270, rot270_flipud, add_csnt]
-		w_aug = [32, 12, 12, 12, 12, 12, 12, 12, 12] # one fourth chances to do_nothing
+		aug_list = [do_nothing, flipud, rot90, rot90_flipud, rot180, rot180_flipud, rot270, rot270_flipud]
+		w_aug = [3, 1, 1, 1, 1, 1, 1, 1] # 30% chances to do_nothing
 		return choices(aug_list, w_aug)
 
 	img_train_o = datain_o
