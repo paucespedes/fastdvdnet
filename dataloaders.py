@@ -39,14 +39,15 @@ class VideoReaderPipeline(Pipeline):
 				Frame interval between each sequence (if `step` < 0, `step` is set to `sequence_length`).
 	'''
 	def __init__(self, batch_size, sequence_length, num_threads, device_id, files_noisy,
-				 files_denoised, files_original, crop_size, step=-1):
-		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id)
+				 files_denoised, files_original, crop_size, random_shuffle=True, step=-1):
+		super(VideoReaderPipeline, self).__init__(batch_size, num_threads, device_id, seed=2323)
 		# Define VideoReader for noisy videos
 		self.reader_noisy = ops.VideoReader(device="gpu",
 											filenames=files_noisy,
 											sequence_length=sequence_length,
 											normalized=False,
-											random_shuffle=False,
+											random_shuffle=random_shuffle,
+											seed=self.seed,
 											image_type=types.DALIImageType.RGB,
 											dtype=types.DALIDataType.UINT8,
 											step=step,
@@ -58,7 +59,8 @@ class VideoReaderPipeline(Pipeline):
 											filenames=files_denoised,
 											sequence_length=sequence_length,
 											normalized=False,
-											random_shuffle=False,
+											random_shuffle=random_shuffle,
+											seed=self.seed,
 											image_type=types.DALIImageType.RGB,
 											dtype=types.DALIDataType.UINT8,
 											step=step,
@@ -70,7 +72,8 @@ class VideoReaderPipeline(Pipeline):
 											   filenames=files_original,
 											   sequence_length=sequence_length,
 											   normalized=False,
-											   random_shuffle=False,
+											   random_shuffle=random_shuffle,
+											   seed=self.seed,
 											   image_type=types.DALIImageType.RGB,
 											   dtype=types.DALIDataType.UINT8,
 											   step=step,
@@ -120,7 +123,7 @@ class train_dali_loader():
 	'''
 
 	def __init__(self, batch_size, noisy_file_root, denoised_file_root, original_file_root, sequence_length,
-				 crop_size, epoch_size=-1, temp_stride=-1):
+				 crop_size, epoch_size=-1, random_shuffle=True, temp_stride=-1):
 		# Builds list of sequence filenames
 		container_noisy_files = os.listdir(noisy_file_root)
 		container_noisy_files = [noisy_file_root + '/' + f for f in container_noisy_files]
@@ -140,7 +143,8 @@ class train_dali_loader():
 											files_denoised=container_denoised_files,
 											files_original=container_original_files,
 											crop_size=crop_size,
-											step=temp_stride,)
+											step=temp_stride,
+											random_shuffle=random_shuffle)
 		self.pipeline.build()
 
 		# Define size of epoch
