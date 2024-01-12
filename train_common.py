@@ -84,14 +84,12 @@ def	log_train_psnr(result, imsource, loss, writer, epoch, idx, num_minibatches, 
 	'''Logs trai loss.
 	'''
 	#Compute pnsr of the whole batch
-# 	psnr_train = batch_psnr(torch.clamp(result, 0., 1.), imsource, 1.)
+	psnr_train = batch_psnr(torch.clamp(result, 0., 1.), imsource, 1.)
 
 	# Log the scalar values
 	writer.add_scalar('loss', loss.item(), training_params['step'])
-# 	writer.add_scalar('PSNR on training data', psnr_train, \
-# 		  training_params['step'])
-	print("[epoch {}][{}/{}] loss: {:1.4f} PSNR_train: {:1.4f}".\
-		  format(epoch+1, idx+1, num_minibatches, loss.item(), 0.0))
+	writer.add_scalar('PSNR on training data', psnr_train, training_params['step'])
+	print("[epoch {}][{}/{}] loss: {:1.4f} PSNR_train: {:1.4f}".format(epoch+1, idx+1, num_minibatches, loss.item(), psnr_train))
 
 def save_model_checkpoint(model, argdict, optimizer, train_pars, epoch):
 	"""Stores the model parameters under 'argdict['log_dir'] + '/net.pth'
@@ -158,3 +156,21 @@ def validate_and_log(model_temp, dataset_val, valnoisestd, temp_psz, writer, \
 
 	except Exception as e:
 		logger.error("validate_and_log_temporal(): Couldn't log results, {}".format(e))
+def log_training_patches(writer, epoch , step, trainimg_o, trainimg_n, trainimg_d):
+	# Log training images
+	_, _, Ht, Wt = trainimg_o.size()
+	imgo = tutils.make_grid(trainimg_o.view(-1, 3, Ht, Wt), \
+						   nrow=8, normalize=True, scale_each=True)
+	writer.add_image('Original Training patches(epoch {})'.format(epoch), imgo, step)
+
+	# Log training images
+	_, _, Ht, Wt = trainimg_n.size()
+	imgn = tutils.make_grid(trainimg_n.view(-1, 3, Ht, Wt), \
+						   nrow=8, normalize=True, scale_each=True)
+	writer.add_image('Noisy Training patches(epoch {})'.format(epoch), imgn, step)
+
+	# Log training images
+	_, _, Ht, Wt = trainimg_d.size()
+	imgd = tutils.make_grid(trainimg_d.view(-1, 3, Ht, Wt), \
+							nrow=8, normalize=True, scale_each=True)
+	writer.add_image('Denoised Training patches(epoch {})'.format(epoch), imgd, step)

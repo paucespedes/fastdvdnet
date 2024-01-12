@@ -18,9 +18,10 @@ import torch.optim as optim
 from models import FastDVDnet
 from dataset import ValDataset
 from dataloaders import train_dali_loader
+from images_dataloader import ImagesDataLoader
 from utils import svd_orthogonalization, close_logger, init_logging, normalize_augment
 from train_common import resume_training, lr_scheduler, log_train_psnr, \
-					validate_and_log, save_model_checkpoint
+					validate_and_log, save_model_checkpoint, log_training_patches
 from PIL import Image
 import imagehash as imghash
 import numpy as np
@@ -40,15 +41,13 @@ def main(**args):
 							 valsetdir_denoised=args['valset_dir_denoised'], \
 							 valsetdir_original=args['valset_dir_original'], \
 							 gray_mode=False)
-	loader_train = train_dali_loader(batch_size=args['batch_size'],\
-									noisy_file_root=args['trainset_dir_noisy'], \
-									denoised_file_root=args['trainset_dir_denoised'], \
-									original_file_root=args['trainset_dir_original'], \
-									sequence_length=args['temp_patch_size'],\
-									crop_size=args['patch_size'],\
-									epoch_size=args['max_number_patches'], \
-									random_shuffle=True, \
-									temp_stride=3)
+
+	images_loader_train = ImagesDataLoader(batch_size=args['batch_size'], \
+										   sequence_length=args['temp_patch_size'], \
+										   clean_files=args['trainset_dir_original'], \
+										   noisy_files=args['trainset_dir_noisy'], \
+										   denoised_files=args['trainset_dir_denoised'], \
+										   crop_size=args['patch_size'])
 
 	num_minibatches = int(args['max_number_patches']//args['batch_size'])
 	ctrl_fr_idx = (args['temp_patch_size'] - 1) // 2
@@ -91,7 +90,11 @@ def main(**args):
 		# train
 		eventHorizonCrossed = False
 
-		for i, data in enumerate(loader_train, 0):
+		for i, data in enumerate(images_loader_train, 0):
+			# Manually stop when epoch is completed
+			if i >= num_minibatches:
+				break
+
 			# Pre-training step
 			model.train()
 
@@ -100,26 +103,24 @@ def main(**args):
 
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
 			# extract ground truth (central frame)
-			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0]['data_original'], \
-																						 data[0]['data_noisy'], \
-																						 data[0]['data_denoised'], \
-																						 ctrl_fr_idx)
+			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0], data[1], data[2], ctrl_fr_idx)
+
 			# imgo_train, gt_train = normalize_augment(data[0]['data_original'], ctrl_fr_idx)
 			# imgn_train, gt_n = normalize_augment(data[0]['data_noisy'], ctrl_fr_idx)
 			# imgd_train, gt_d = normalize_augment(data[0]['data_denoised'], ctrl_fr_idx)
 			N, _, H, W = imgn_train.size()
 
-			dd = data[0]['data_denoised']
-			dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
-			dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			# dd = data[0]['data_denoised']
+			# dd = dd.view(dd.size()[0], -1, dd.size()[-2], dd.size()[-1]) / 255.
+			# dd = dd[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 			#
 			# dn = data[0]['data_noisy']
 			# dn = dn.view(dn.size()[0], -1, dn.size()[-2], dn.size()[-1]) / 255.
 			# dn = dn[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 			#
-			do = data[0]['data_original']
-			do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
-			do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
+			# do = data[0]['data_original']
+			# do = do.view(do.size()[0], -1, do.size()[-2], do.size()[-1]) / 255.
+			# do = do[:, 3 * ctrl_fr_idx:3 * ctrl_fr_idx + 3, :, :]
 
 			# if(do.size() != dd.size()):
 			# 	print("Sizes differ {} to {}".format(dd.size(), do.size()))
@@ -148,8 +149,8 @@ def main(**args):
 				# showImage(gt_n[0], "GTN")
 				# showImage(gt_d[0], "GTD")
 
-			if training_params['step'] % 20 == 0:
-				areImagesDesincronized(do[0], dd[0], training_params['step'], epoch)
+			# if training_params['step'] % 20 == 0:
+			# 	areImagesDesincronized(do[0], dd[0], training_params['step'], epoch)
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
@@ -208,6 +209,10 @@ def main(**args):
 								i, \
 								num_minibatches, \
 								training_params)
+
+			if training_params['step'] % 1000 == 0:
+				log_training_patches(writer, epoch + 1, training_params['step'], imgo_train, imgn_train, imgd_train)
+
 			# update step counter
 			training_params['step'] += 1
 
