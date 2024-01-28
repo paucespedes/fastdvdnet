@@ -37,9 +37,10 @@ class InputCvBlock(nn.Module):
 	def __init__(self, num_in_frames, out_ch, is_block_2=False):
 		super(InputCvBlock, self).__init__()
 		block_multiplier = 2
+		self.interm_ch = 45
 		if is_block_2:
 			block_multiplier = 1
-		self.interm_ch = 30
+			self.interm_ch = 30
 		self.convblock = nn.Sequential(
 			nn.Conv2d(num_in_frames*(3 * block_multiplier), num_in_frames*self.interm_ch, \
 					  kernel_size=3, padding=1, groups=num_in_frames, bias=False),
@@ -105,9 +106,9 @@ class DenBlock(nn.Module):
 
 	def __init__(self, num_input_frames=3):
 		super(DenBlock, self).__init__()
-		self.chs_lyr0 = 32
-		self.chs_lyr1 = 64
-		self.chs_lyr2 = 128
+		self.chs_lyr0 = 48
+		self.chs_lyr1 = 96
+		self.chs_lyr2 = 192
 
 		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0)
 		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
