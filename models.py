@@ -42,7 +42,7 @@ class InputCvBlock(nn.Module):
 		self.interm_ch = 30
 		self.convblock = nn.Sequential(
 			nn.Conv2d(num_in_frames*(3 * block_multiplier), num_in_frames*self.interm_ch, \
-					  kernel_size=3, padding=1, groups=num_in_frames*block_multiplier, bias=False),
+					  kernel_size=3, padding=1, groups=num_in_frames, bias=False),
 			nn.BatchNorm2d(num_in_frames*self.interm_ch),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(num_in_frames*self.interm_ch, out_ch, kernel_size=3, padding=1, bias=False),
