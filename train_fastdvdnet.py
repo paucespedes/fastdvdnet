@@ -23,7 +23,7 @@ from utils import svd_orthogonalization, close_logger, init_logging, normalize_a
 from train_common import resume_training, lr_scheduler, log_train_psnr, \
 					validate_and_log, save_model_checkpoint, log_training_patches
 from PIL import Image
-import imagehash as imghash
+# import imagehash as imghash
 import numpy as np
 import numpy as np
 import matplotlib.pyplot as plt
@@ -271,34 +271,34 @@ def showImage(img, t):
 	plt.title(f"Image {t}")
 	plt.show()
 
-def areImagesDesincronized(img1, img2, step, epoch):
-	image1 = img1.cpu()  # Extract the image at index i
-	image1 = (image1 * 255).byte()
-	image1 = image1.permute(1, 2, 0).numpy()
-	i1 = Image.fromarray(image1)
-
-	image2 = img2.cpu()  # Extract the image at index i
-	image2 = (image2 * 255).byte()
-	image2 = image2.permute(1, 2, 0).numpy()
-	i2 = Image.fromarray(image2)
-
-	hash0 = imghash.average_hash(i1)
-	hash1 = imghash.average_hash(i2)
-
-	cutoff = 30  # maximum bits that could be different between the hashes.
-	diff = abs(hash0 - hash1)
-
-	if diff >= cutoff:
-		print('Iajuuuuu')
-		f = open("/home/pau/TFG/logs/NEWLOGS/desync-finder/log/desync-info.txt", "a")
-		f.write("-Desync at step {0} of epoch {1} (hash diff {2})\n".format(step, epoch, diff))
-		f.close()
-
-		current_datetime = datetime.now().strftime("%d_%m_%Y-%H_%M_%S")
-		i1.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/original/{0}.jpg'.format(current_datetime), 'JPEG')
-		i2.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/denoised/{0}.jpg'.format(current_datetime), 'JPEG')
-		return True
-	return False
+# def areImagesDesincronized(img1, img2, step, epoch):
+# 	image1 = img1.cpu()  # Extract the image at index i
+# 	image1 = (image1 * 255).byte()
+# 	image1 = image1.permute(1, 2, 0).numpy()
+# 	i1 = Image.fromarray(image1)
+#
+# 	image2 = img2.cpu()  # Extract the image at index i
+# 	image2 = (image2 * 255).byte()
+# 	image2 = image2.permute(1, 2, 0).numpy()
+# 	i2 = Image.fromarray(image2)
+#
+# 	hash0 = imghash.average_hash(i1)
+# 	hash1 = imghash.average_hash(i2)
+#
+# 	cutoff = 30  # maximum bits that could be different between the hashes.
+# 	diff = abs(hash0 - hash1)
+#
+# 	if diff >= cutoff:
+# 		print('Iajuuuuu')
+# 		f = open("/home/pau/TFG/logs/NEWLOGS/desync-finder/log/desync-info.txt", "a")
+# 		f.write("-Desync at step {0} of epoch {1} (hash diff {2})\n".format(step, epoch, diff))
+# 		f.close()
+#
+# 		current_datetime = datetime.now().strftime("%d_%m_%Y-%H_%M_%S")
+# 		i1.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/original/{0}.jpg'.format(current_datetime), 'JPEG')
+# 		i2.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/denoised/{0}.jpg'.format(current_datetime), 'JPEG')
+# 		return True
+# 	return False
 
 if __name__ == "__main__":
 
