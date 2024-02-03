@@ -63,6 +63,7 @@ def main(**args):
 	# Create model
 	model = FastDVDnet()
 	model = nn.DataParallel(model, device_ids=device_ids).cuda()
+	print_model_parameters(model)
 
 	# Define loss
 	criterion = nn.MSELoss(reduction='sum')
@@ -299,6 +300,13 @@ def areImagesDesincronized(img1, img2, step, epoch):
 		i2.save('/home/pau/TFG/logs/NEWLOGS/desync-finder/images/denoised/{0}.jpg'.format(current_datetime), 'JPEG')
 		return True
 	return False
+
+def print_model_parameters(model):
+	pytorch_total_params = sum(p.numel() for p in model.parameters())
+	print('Total number of parameters: {}'.format(pytorch_total_params))
+
+	pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+	print('Total number of Trainable parameters: {}'.format(pytorch_total_params))
 
 if __name__ == "__main__":
 
