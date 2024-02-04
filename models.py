@@ -105,9 +105,9 @@ class DenBlock(nn.Module):
 
 	def __init__(self, num_input_frames=3):
 		super(DenBlock, self).__init__()
-		self.chs_lyr0 = 32
-		self.chs_lyr1 = 64
-		self.chs_lyr2 = 128
+		self.chs_lyr0 = 16
+		self.chs_lyr1 = 32
+		self.chs_lyr2 = 64
 
 		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0)
 		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
@@ -159,9 +159,9 @@ class DenBlock2(nn.Module):
 
 	def __init__(self, num_input_frames=3):
 		super(DenBlock2, self).__init__()
-		self.chs_lyr0 = 32
-		self.chs_lyr1 = 64
-		self.chs_lyr2 = 128
+		self.chs_lyr0 = 16
+		self.chs_lyr1 = 32
+		self.chs_lyr2 = 64
 
 		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0, is_block_2=True)
 		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
