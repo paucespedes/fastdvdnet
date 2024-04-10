@@ -16,6 +16,8 @@ class ImagesDataLoader:
                             os.path.isdir(os.path.join(clean_files, d)) and
                             os.path.isdir(os.path.join(noisy_files, d)) and
                             os.path.isdir(os.path.join(denoised_files, d))]
+        self.noise_levels = self.create_noises_dictionary(noisy_files)
+        print(self.noise_levels)
 
     def __iter__(self):
         return self
@@ -28,11 +30,13 @@ class ImagesDataLoader:
         clean_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         noisy_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         denoised_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
+        noise_levels = torch.zeros((self.batch_size, 1, 1, 1), device='cuda', dtype=torch.float)
 
         for i, video_name in enumerate(batch_randomly_selected_videos):
+            noise_levels[i] = self.noise_levels[video_name]
             clean_batch[i], noisy_batch[i], denoised_batch[i] = self.get_frames(video_name)
 
-        return clean_batch, noisy_batch, denoised_batch
+        return clean_batch, noisy_batch, denoised_batch, noise_levels
 
     def process_image(self, image_path, x, y):
         # Load image
@@ -84,3 +88,26 @@ class ImagesDataLoader:
             denoised_frames[i - first_frame_idx] = self.process_image(denoised_frame_paths[i], x, y)
 
         return clean_frames, noisy_frames, denoised_frames
+
+    def create_noises_dictionary(self, path):
+        result_dict = {}
+        # Iterate over all items in the directory
+        for item in os.listdir(path):
+            # Check if the item is a directory
+            if os.path.isdir(os.path.join(path, item)):
+                # Form the path to the subfolder's text file
+                txt_file_path = os.path.join(path, item, "noise_level.txt")
+                # Check if the text file exists
+                if os.path.isfile(txt_file_path):
+                    # Read the integer from the text file and store it in the dictionary
+                    with open(txt_file_path, 'r') as file:
+                        content = file.read()
+                        try:
+                            value = int(content.strip())/255.
+                        except ValueError:
+                            print(f"Warning: Unable to convert content of {txt_file_path} to an integer.")
+                            continue
+                        result_dict[item] = value
+                else:
+                    print(f"Warning: {item}.txt not found in {os.path.join(path, item)}")
+        return result_dict
