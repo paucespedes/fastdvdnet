@@ -111,8 +111,8 @@ class DenBlock(nn.Module):
 
 		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0)
 		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
-		self.downc1 = DownBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr2)
-		self.upc2 = UpBlock(in_ch=self.chs_lyr2, out_ch=self.chs_lyr1)
+		# self.downc1 = DownBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr2)
+		# self.upc2 = UpBlock(in_ch=self.chs_lyr2, out_ch=self.chs_lyr1)
 		self.upc1 = UpBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr0)
 		self.outc = OutputCvBlock(in_ch=self.chs_lyr0, out_ch=3)
 
@@ -165,8 +165,8 @@ class DenBlock2(nn.Module):
 
 		self.inc = InputCvBlock(num_in_frames=num_input_frames, out_ch=self.chs_lyr0, is_block_2=True)
 		self.downc0 = DownBlock(in_ch=self.chs_lyr0, out_ch=self.chs_lyr1)
-		self.downc1 = DownBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr2)
-		self.upc2 = UpBlock(in_ch=self.chs_lyr2, out_ch=self.chs_lyr1)
+		# self.downc1 = DownBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr2)
+		# self.upc2 = UpBlock(in_ch=self.chs_lyr2, out_ch=self.chs_lyr1)
 		self.upc1 = UpBlock(in_ch=self.chs_lyr1, out_ch=self.chs_lyr0)
 		self.outc = OutputCvBlock(in_ch=self.chs_lyr0, out_ch=3)
 
@@ -190,10 +190,11 @@ class DenBlock2(nn.Module):
 		x0 = self.inc(torch.cat((in0, in1, in2), dim=1))
 		# Downsampling
 		x1 = self.downc0(x0)
-		x2 = self.downc1(x1)
-		# Upsampling
-		x2 = self.upc2(x2)
-		x1 = self.upc1(x1+x2)
+		# x2 = self.downc1(x1)
+		# # Upsampling
+		# x2 = self.upc2(x2)
+		# x1 = self.upc1(x1+x2)
+		x1 = self.upc1(x1)
 		# Estimation
 		x = self.outc(x0+x1)
 
