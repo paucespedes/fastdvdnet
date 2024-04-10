@@ -136,10 +136,11 @@ class DenBlock(nn.Module):
 		x0 = self.inc(torch.cat((in0, den_in_0, in1, den_in_1, in2, den_in_2), dim=1))
 		# Downsampling
 		x1 = self.downc0(x0)
-		x2 = self.downc1(x1)
-		# Upsampling
-		x2 = self.upc2(x2)
-		x1 = self.upc1(x1+x2)
+		# x2 = self.downc1(x1)
+		# # Upsampling
+		# x2 = self.upc2(x2)
+		# x1 = self.upc1(x1+x2)
+		x1 = self.upc1(x1)
 		# Estimation
 		x = self.outc(x0+x1)
 
