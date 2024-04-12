@@ -14,7 +14,7 @@ import os
 import glob
 import torch
 from torch.utils.data.dataset import Dataset
-from utils import open_sequence
+from utils import open_sequence, get_noise_level
 
 NUMFRXSEQ_VAL = 15	# number of frames of each sequence to include in validation dataset
 VALSEQPATT = '*' # pattern for name of validation sequence
@@ -26,6 +26,7 @@ class ValDataset(Dataset):
 		self.gray_mode = gray_mode
 
 		self.noisy_sequences = self.loadSequences(valsetdir_noisy, gray_mode, num_input_frames)
+		self.noise_levels = self.get_noises(valsetdir_noisy)
 		self.denoised_sequences = self.loadSequences(valsetdir_denoised, gray_mode, num_input_frames)
 		self.original_sequences = self.loadSequences(valsetdir_original, gray_mode, num_input_frames)
 
@@ -33,8 +34,9 @@ class ValDataset(Dataset):
 		noisy = torch.from_numpy(self.noisy_sequences[index])
 		denoised = torch.from_numpy(self.denoised_sequences[index])
 		original = torch.from_numpy(self.original_sequences[index])
+		noise = self.noise_levels[index]
 
-		return noisy, denoised, original
+		return noisy, denoised, original, noise
 
 	def __len__(self):
 		return len(self.original_sequences)
@@ -44,11 +46,20 @@ class ValDataset(Dataset):
 		seqs_dirs = sorted(glob.glob(os.path.join(valsetdir, VALSEQPATT)))
 
 		# open individual sequences and append them to the sequence list
+		noises = {}
 		sequences = []
 		for seq_dir in seqs_dirs:
-			seq, _, _ = open_sequence(seq_dir, gray_mode, expand_if_needed=False, \
-									  max_num_fr=num_input_frames)
+			seq, _, _ = open_sequence(seq_dir, gray_mode, expand_if_needed=False, max_num_fr=num_input_frames)
+			noises[os.path.basename(seq_dir)] = get_noise_level(seq_dir)
 			# seq is [num_frames, C, H, W]
 			sequences.append(seq)
 
 		return sequences
+
+	def get_noises(self, valsetdir):
+		seqs_dirs = sorted(glob.glob(os.path.join(valsetdir, VALSEQPATT)))
+		noises = []
+		for seq_dir in seqs_dirs:
+			noises.append(get_noise_level(seq_dir))
+
+		return noises

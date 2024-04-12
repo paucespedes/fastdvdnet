@@ -108,18 +108,20 @@ def save_model_checkpoint(model, argdict, optimizer, train_pars, epoch):
 		torch.save(save_dict, os.path.join(argdict['log_dir'], 'ckpt_e{}.pth'.format(epoch+1)))
 	del save_dict
 
-def validate_and_log(model_temp, dataset_val, valnoisestd, temp_psz, writer, \
+def validate_and_log(model_temp, dataset_val, temp_psz, writer, \
 					 epoch, lr, logger, trainimg):
 	"""Validation step after the epoch finished
 	"""
 	t1 = time.time()
 	psnr_val = 0
 	with torch.no_grad():
-		for noisy_seq, denoised_seq, original_seq in dataset_val:
-			out_val = denoise_seq_fastdvdnet(noisyseq=noisy_seq,\
-											denoisedseq=denoised_seq,\
-											temp_psz=temp_psz,\
-											model_temporal=model_temp)
+		for noisy_seq, denoised_seq, original_seq, noise in dataset_val:
+			sigma_noise = torch.cuda.FloatTensor([noise])
+			out_val = denoise_seq_fastdvdnet(noisyseq=noisy_seq, \
+											 denoisedseq=denoised_seq, \
+											 noise_std=sigma_noise, \
+											 temp_psz=temp_psz,\
+											 model_temporal=model_temp)
 			psnr_val += batch_psnr(out_val.cpu(), original_seq.squeeze_(), 1.)
 		psnr_val /= len(dataset_val)
 		t2 = time.time()
