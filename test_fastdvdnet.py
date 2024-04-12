@@ -13,7 +13,7 @@ import torch.nn as nn
 from models import FastDVDnet
 from fastdvdnet import denoise_seq_fastdvdnet
 from utils import batch_psnr, init_logger_test, \
-    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger
+    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger, get_noise_level
 
 NUM_IN_FR_EXT = 5  # temporal size of patch
 MC_ALGO = 'DeepFlow'  # motion estimation algorithm
@@ -115,14 +115,12 @@ def test_fastdvdnet(**args):
                                    max_num_fr=args['max_num_fr_per_seq'])
         seqt = torch.from_numpy(seqt).to(device)
 
-        # Add noise
-        #noise = torch.empty_like(seq).normal_(
-        #    mean=0, std=args['noise_sigma']).to(device)
-        #seqn = seq + noise
-        noisestd = torch.FloatTensor([args['noise_sigma']]).to(device)
+        noise = get_noise_level(['test_path'])
+        sigma_noise = torch.cuda.FloatTensor([noise])
 
         denframes = denoise_seq_fastdvdnet(noisyseq=seq,
                                            denoisedseq=seqd,
+                                           noise_std=sigma_noise,
                                            temp_psz=NUM_IN_FR_EXT,
                                            model_temporal=model_temp)
 
