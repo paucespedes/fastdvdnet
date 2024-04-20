@@ -96,17 +96,17 @@ def main(**args):
 			if i >= num_minibatches:
 				break
 
-			if i > 1:
-				validate_and_log(
-					model_temp=model, \
-					dataset_val=dataset_val, \
-					temp_psz=args['temp_patch_size'], \
-					writer=writer, \
-					epoch=epoch, \
-					lr=current_lr, \
-					logger=logger, \
-					trainimg=imgo_train
-				)
+			# if i > 1:
+			# 	validate_and_log(
+			# 		model_temp=model, \
+			# 		dataset_val=dataset_val, \
+			# 		temp_psz=args['temp_patch_size'], \
+			# 		writer=writer, \
+			# 		epoch=epoch, \
+			# 		lr=current_lr, \
+			# 		logger=logger, \
+			# 		trainimg=imgo_train
+			# 	)
 
 			# Pre-training step
 			model.train()
