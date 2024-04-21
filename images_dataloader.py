@@ -1,11 +1,11 @@
 import os
 import random
-
 import cv2
 import numpy as np
 import torch
 from PIL import Image
 import albumentations as A
+from albumentations.pytorch import ToTensorV2
 from matplotlib import pyplot as plt
 
 class ImagesDataLoader:
@@ -24,11 +24,12 @@ class ImagesDataLoader:
         # print(self.noise_levels)
         self.transform = A.ReplayCompose(
             [
+                A.RandomCrop(height=crop_size, width=crop_size),
                 A.OneOf([
                     A.HorizontalFlip(p=0.33),
                     A.VerticalFlip(p=0.33),
                     A.RandomRotate90(p=0.33),
-                ], p=0.85),
+                ], p=0.8),
                 A.OneOf([
                     A.RandomBrightnessContrast(p=0.2),
                     A.RGBShift(p=0.2),
@@ -36,7 +37,8 @@ class ImagesDataLoader:
                     A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
                     A.CLAHE(p=0.2),
                     A.InvertImg(p=0.2)
-                ], p=0.3),
+                ], p=0.25),
+                ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
         )
@@ -60,14 +62,12 @@ class ImagesDataLoader:
 
         return clean_batch, noisy_batch, denoised_batch, noise_levels
 
-    def initial_process_image(self, image_path, x, y):
+    def initial_process_image(self, image_path):
         # Load image
-        image = Image.open(image_path)
-        image = image.convert('RGB')  # Convert to RGB if not already
+        image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        image = image.crop((x, y, x + self.crop_size, y + self.crop_size))\
-
-        return np.array(image)
+        return image
 
         # Convert to numpy array and transpose to [C, H, W]
         # image_np = np.c(image).transpose(2, 0, 1)
@@ -76,41 +76,42 @@ class ImagesDataLoader:
         # image_tensor = torch.from_numpy(image_np).to(device='cuda').float()
         # return image_tensor
 
-    def replay_process_and_augment_images(self, img_o, img_n, img_d, x, y, replay):
-        img_np_o = self.initial_process_image(img_o, x, y)
-        img_np_n = self.initial_process_image(img_n, x, y)
-        img_np_d = self.initial_process_image(img_d, x, y)
+    def replay_process_and_augment_images(self, img_o, img_n, img_d, replay):
+        img_np_o = self.initial_process_image(img_o)
+        img_np_n = self.initial_process_image(img_n)
+        img_np_d = self.initial_process_image(img_d)
 
         augmented_images = A.ReplayCompose.replay(replay, image=img_np_o, noisy=img_np_n, denoised=img_np_d)
 
         # self.visualize(augmented_images)
 
         # Convert the numpy arrays to PyTorch tensors
-        img_tensor_o = torch.from_numpy(augmented_images['image'].transpose(2, 0, 1)).to(device='cuda').float()
-        img_tensor_n = torch.from_numpy(augmented_images['noisy'].transpose(2, 0, 1)).to(device='cuda').float()
-        img_tensor_d = torch.from_numpy(augmented_images['denoised'].transpose(2, 0, 1)).to(device='cuda').float()
+        img_tensor_o = augmented_images['image'].to(device='cuda').float()
+        img_tensor_n = augmented_images['noisy'].to(device='cuda').float()
+        img_tensor_d = augmented_images['denoised'].to(device='cuda').float()
 
         return img_tensor_o, img_tensor_n, img_tensor_d
 
-    def first_process_and_augment_images(self, img_o, img_n, img_d, x, y):
-        img_np_o = self.initial_process_image(img_o, x, y)
-        img_np_n = self.initial_process_image(img_n, x, y)
-        img_np_d = self.initial_process_image(img_d, x, y)
+    def first_process_and_augment_images(self, img_o, img_n, img_d):
+        img_np_o = self.initial_process_image(img_o)
+        img_np_n = self.initial_process_image(img_n)
+        img_np_d = self.initial_process_image(img_d)
 
         augmented_images = self.transform(image=img_np_o, noisy=img_np_n, denoised=img_np_d)
 
         # self.visualize(augmented_images)
 
         # Convert the numpy arrays to PyTorch tensors
-        img_tensor_o = torch.from_numpy(augmented_images['image'].transpose(2, 0, 1)).to(device='cuda').float()
-        img_tensor_n = torch.from_numpy(augmented_images['noisy'].transpose(2, 0, 1)).to(device='cuda').float()
-        img_tensor_d = torch.from_numpy(augmented_images['denoised'].transpose(2, 0, 1)).to(device='cuda').float()
+        img_tensor_o = augmented_images['image'].to(device='cuda').float()
+        img_tensor_n = augmented_images['noisy'].to(device='cuda').float()
+        img_tensor_d = augmented_images['denoised'].to(device='cuda').float()
 
         return img_tensor_o, img_tensor_n, img_tensor_d, augmented_images['replay']
 
     def visualize(self, augmented_images):
         # create figure
         fig = plt.figure(figsize=(10, 5))
+        fig.title('Augmentations: ')
 
         # Adds a subplot at the 1st position
         fig.add_subplot(1, 3, 1)
@@ -154,11 +155,6 @@ class ImagesDataLoader:
         ctrl_frame_idx = random.randint(self.sequence_length // 2,
                                         len(clean_frame_paths) - (1 + self.sequence_length // 2))
 
-        ctrl_frame_image = Image.open(clean_frame_paths[ctrl_frame_idx])
-        width, height = ctrl_frame_image.size
-        x = random.randint(0, width - self.crop_size)
-        y = random.randint(0, height - self.crop_size)
-
         clean_frames = torch.zeros((self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         noisy_frames = torch.zeros((self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         denoised_frames = torch.zeros((self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
@@ -169,11 +165,11 @@ class ImagesDataLoader:
             last_frame_idx += 1
 
         clean_frames[0], noisy_frames[0], denoised_frames[0], replay = self.first_process_and_augment_images(
-            clean_frame_paths[first_frame_idx], noisy_frame_paths[first_frame_idx], denoised_frame_paths[first_frame_idx], x, y)
+            clean_frame_paths[first_frame_idx], noisy_frame_paths[first_frame_idx], denoised_frame_paths[first_frame_idx])
 
         for i in range(first_frame_idx + 1, last_frame_idx):
             clean_frames[i - first_frame_idx], noisy_frames[i - first_frame_idx], denoised_frames[i - first_frame_idx] = self.replay_process_and_augment_images(
-                clean_frame_paths[i], noisy_frame_paths[i], denoised_frame_paths[i], x, y, replay)
+                clean_frame_paths[i], noisy_frame_paths[i], denoised_frame_paths[i], replay)
 
         return clean_frames, noisy_frames, denoised_frames
 

@@ -91,7 +91,13 @@ def main(**args):
 		# train
 		eventHorizonCrossed = False
 
+		start = time.time()
+
 		for i, data in enumerate(images_loader_train, 0):
+			if i == 20:
+				end = time.time()
+				print("Elapsed time till 20 steps: %f s" % (end - start))
+
 			# Manually stop when epoch is completed
 			if i >= num_minibatches:
 				break
