@@ -1,8 +1,11 @@
 import os
 import random
+import cv2
 import numpy as np
 import torch
 from PIL import Image
+
+IMAGE_EXTENSIONS = ('.png', '.tif')
 
 class ImagesDataLoader:
     def __init__(self, batch_size, sequence_length, clean_files, noisy_files, denoised_files, crop_size):
@@ -40,10 +43,13 @@ class ImagesDataLoader:
 
     def process_image(self, image_path, x, y):
         # Load image
-        image = Image.open(image_path)
-        image = image.convert('RGB')  # Convert to RGB if not already
+        if image_path.endswith('.tif'):
+            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        else:
+            image = cv2.imread(image_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        image = image.crop((x, y, x + self.crop_size, y + self.crop_size))
+        image = image[y : y + self.crop_size, x : x + self.crop_size, :]
 
         # Convert to numpy array and transpose to [C, H, W]
         image_np = np.array(image).transpose(2, 0, 1)
@@ -58,11 +64,11 @@ class ImagesDataLoader:
         denoised_path = os.path.join(self.denoised_files, video_name)
 
         # Get all PNG image files in the folder
-        clean_frame_paths = [os.path.join(clean_path, f) for f in os.listdir(clean_path) if f.endswith('.png')]
+        clean_frame_paths = [os.path.join(clean_path, f) for f in os.listdir(clean_path) if f.endswith(IMAGE_EXTENSIONS)]
         clean_frame_paths.sort()
-        noisy_frame_paths = [os.path.join(noisy_path, f) for f in os.listdir(noisy_path) if f.endswith('.png')]
+        noisy_frame_paths = [os.path.join(noisy_path, f) for f in os.listdir(noisy_path) if f.endswith(IMAGE_EXTENSIONS)]
         noisy_frame_paths.sort()
-        denoised_frame_paths = [os.path.join(denoised_path, f) for f in os.listdir(denoised_path) if f.endswith('.png')]
+        denoised_frame_paths = [os.path.join(denoised_path, f) for f in os.listdir(denoised_path) if f.endswith(IMAGE_EXTENSIONS)]
         denoised_frame_paths.sort()
 
         ctrl_frame_idx = random.randint(self.sequence_length // 2,
