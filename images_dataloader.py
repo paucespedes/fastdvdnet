@@ -22,37 +22,22 @@ class ImagesDataLoader:
                             os.path.isdir(os.path.join(denoised_files, d))]
         self.noise_levels = self.create_noises_dictionary(noisy_files)
         # print(self.noise_levels)
-        # self.transform = A.ReplayCompose(
-        #     [
-        #         A.RandomCrop(height=crop_size, width=crop_size),
-        #         A.OneOf([
-        #             A.HorizontalFlip(p=0.33),
-        #             A.VerticalFlip(p=0.33),
-        #             A.RandomRotate90(p=0.33),
-        #         ], p=0.8),
-        #         A.OneOf([
-        #             A.RandomBrightnessContrast(p=0.2),
-        #             A.RGBShift(p=0.2),
-        #             A.ChannelShuffle(p=0.2),
-        #             A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
-        #             A.CLAHE(p=0.2),
-        #             A.InvertImg(p=0.2)
-        #         ], p=0.25),
-        #         ToTensorV2()
-        #     ],
-        #     additional_targets={'noisy': 'image', 'denoised': 'image'}
-        # )
         self.transform = A.ReplayCompose(
             [
                 A.RandomCrop(height=crop_size, width=crop_size),
                 A.OneOf([
-                                A.HorizontalFlip(p=0.33),
-                                A.VerticalFlip(p=0.33),
-                                A.RandomRotate90(p=0.33),
-                            ], p=1),
-                # A.OneOf([
-                #     A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
-                # ], p=1),
+                    A.HorizontalFlip(p=0.33),
+                    A.VerticalFlip(p=0.33),
+                    A.RandomRotate90(p=0.33),
+                ], p=0.8),
+                A.OneOf([
+                    A.RandomBrightnessContrast(p=0.2),
+                    A.RGBShift(p=0.2),
+                    A.ChannelShuffle(p=0.2),
+                    A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
+                    A.CLAHE(p=0.2),
+                    A.InvertImg(p=0.2)
+                ], p=0.25),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
@@ -86,13 +71,6 @@ class ImagesDataLoader:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         return image
-
-        # Convert to numpy array and transpose to [C, H, W]
-        # image_np = np.c(image).transpose(2, 0, 1)
-        #
-        # # Convert the numpy array to PyTorch tensor
-        # image_tensor = torch.from_numpy(image_np).to(device='cuda').float()
-        # return image_tensor
 
     def replay_process_and_augment_images(self, img_o, img_n, img_d, replay):
         img_np_o = self.initial_process_image(img_o)

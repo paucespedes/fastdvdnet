@@ -89,14 +89,11 @@ def main(**args):
 		print('\nlearning rate %f' % current_lr)
 
 		# train
-		eventHorizonCrossed = False
-
-		start = time.time()
-
+		# start = time.time()
 		for i, data in enumerate(images_loader_train, 0):
-			if i % 100 == 0:
-				end = time.time()
-				print("Elapsed time till %d steps: %f s" % (i, end - start))
+			# if i % 100 == 0:
+			# 	end = time.time()
+			# 	print("Elapsed time till %d steps: %f s" % (i, end - start))
 
 			# Manually stop when epoch is completed
 			if i >= num_minibatches:
@@ -128,17 +125,17 @@ def main(**args):
 			N, _, H, W = imgn_train.size()
 
 			# Test for different frames
-			do = imgo_train[0]
-			showImage(do[0:3, :, :], "1. Original from pipeline: ")
-			showImage(do[3:6, :, :], "2. Original from pipeline: ")
-			showImage(do[6:9, :, :], "3. Original from pipeline: ")
-			showImage(do[9:12, :, :], "4. Original from pipeline: ")
-			showImage(do[12:15, :, :], "5. Original from pipeline: ")
+			# do = imgo_train[0]
+			# showImage(do[0:3, :, :], "1. Original from pipeline: ")
+			# showImage(do[3:6, :, :], "2. Original from pipeline: ")
+			# showImage(do[6:9, :, :], "3. Original from pipeline: ")
+			# showImage(do[9:12, :, :], "4. Original from pipeline: ")
+			# showImage(do[12:15, :, :], "5. Original from pipeline: ")
 
 			# Test for different categories(original, noisy, denoised)
-			showImage(gt_train[0], "GT0")
-			showImage(gt_n[0], "GTN")
-			showImage(gt_d[0], "GTD")
+			# showImage(gt_train[0], "GT0")
+			# showImage(gt_n[0], "GTN")
+			# showImage(gt_d[0], "GTD")
 
 			# Send tensors to GPU
 			gt_train = gt_train.cuda(non_blocking=True)
