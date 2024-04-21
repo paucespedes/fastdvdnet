@@ -69,10 +69,10 @@ def normalize_augment(datain_o, datain_n, datain_d, ctrl_fr_idx):
 								 img_train_n.size()[-2], img_train_n.size()[-1]) / 255.
 
 	#augment
-	transf = transform_selector()
-	img_train_o = transf[0](img_train_o)
-	img_train_d = transf[0](img_train_d)
-	img_train_n = transf[0](img_train_n)
+	# transf = transform_selector()
+	# img_train_o = transf[0](img_train_o)
+	# img_train_d = transf[0](img_train_d)
+	# img_train_n = transf[0](img_train_n)
 
 	# extract ground truth (central frame)
 	gt_train_o = img_train_o[:, 3*ctrl_fr_idx:3*ctrl_fr_idx+3, :, :]

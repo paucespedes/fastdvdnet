@@ -7,3 +7,8 @@ opencv-python==3.4.2.17
 future==0.18.2
 tensorboardX==2.0
 # --extra-index-url https://developer.download.nvidia.com/compute/redist/cuda/10.0 nvidia-dali==0.10.0
+
+numpy~=1.19.2
+imagehash~=4.2.1
+pillow~=8.3.2
+albumentations~=1.0.3
