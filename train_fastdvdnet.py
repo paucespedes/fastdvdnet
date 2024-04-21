@@ -12,6 +12,7 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 """
 import time
 import argparse
+import torch
 import torch.nn as nn
 import torch.optim as optim
 from models import FastDVDnet
