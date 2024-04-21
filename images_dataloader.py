@@ -1,12 +1,12 @@
 import os
 import random
 import cv2
-import numpy as np
 import torch
-from PIL import Image
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from matplotlib import pyplot as plt
+
+IMAGE_EXTENSIONS = ('.png', '.tif')
 
 class ImagesDataLoader:
     def __init__(self, batch_size, sequence_length, clean_files, noisy_files, denoised_files, crop_size):
@@ -22,22 +22,37 @@ class ImagesDataLoader:
                             os.path.isdir(os.path.join(denoised_files, d))]
         self.noise_levels = self.create_noises_dictionary(noisy_files)
         # print(self.noise_levels)
+        # self.transform = A.ReplayCompose(
+        #     [
+        #         A.RandomCrop(height=crop_size, width=crop_size),
+        #         A.OneOf([
+        #             A.HorizontalFlip(p=0.33),
+        #             A.VerticalFlip(p=0.33),
+        #             A.RandomRotate90(p=0.33),
+        #         ], p=0.8),
+        #         A.OneOf([
+        #             A.RandomBrightnessContrast(p=0.2),
+        #             A.RGBShift(p=0.2),
+        #             A.ChannelShuffle(p=0.2),
+        #             A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
+        #             A.CLAHE(p=0.2),
+        #             A.InvertImg(p=0.2)
+        #         ], p=0.25),
+        #         ToTensorV2()
+        #     ],
+        #     additional_targets={'noisy': 'image', 'denoised': 'image'}
+        # )
         self.transform = A.ReplayCompose(
             [
                 A.RandomCrop(height=crop_size, width=crop_size),
                 A.OneOf([
-                    A.HorizontalFlip(p=0.33),
-                    A.VerticalFlip(p=0.33),
-                    A.RandomRotate90(p=0.33),
-                ], p=0.8),
-                A.OneOf([
-                    A.RandomBrightnessContrast(p=0.2),
-                    A.RGBShift(p=0.2),
-                    A.ChannelShuffle(p=0.2),
-                    A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
-                    A.CLAHE(p=0.2),
-                    A.InvertImg(p=0.2)
-                ], p=0.25),
+                                A.HorizontalFlip(p=0.33),
+                                A.VerticalFlip(p=0.33),
+                                A.RandomRotate90(p=0.33),
+                            ], p=1),
+                # A.OneOf([
+                #     A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
+                # ], p=1),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
@@ -64,7 +79,10 @@ class ImagesDataLoader:
 
     def initial_process_image(self, image_path):
         # Load image
-        image = cv2.imread(image_path)
+        if image_path.endswith('.tif'):
+            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        else:
+            image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         return image
@@ -145,11 +163,11 @@ class ImagesDataLoader:
         denoised_path = os.path.join(self.denoised_files, video_name)
 
         # Get all PNG image files in the folder
-        clean_frame_paths = [os.path.join(clean_path, f) for f in os.listdir(clean_path) if f.endswith('.png')]
+        clean_frame_paths = [os.path.join(clean_path, f) for f in os.listdir(clean_path) if f.endswith(IMAGE_EXTENSIONS)]
         clean_frame_paths.sort()
-        noisy_frame_paths = [os.path.join(noisy_path, f) for f in os.listdir(noisy_path) if f.endswith('.png')]
+        noisy_frame_paths = [os.path.join(noisy_path, f) for f in os.listdir(noisy_path) if f.endswith(IMAGE_EXTENSIONS)]
         noisy_frame_paths.sort()
-        denoised_frame_paths = [os.path.join(denoised_path, f) for f in os.listdir(denoised_path) if f.endswith('.png')]
+        denoised_frame_paths = [os.path.join(denoised_path, f) for f in os.listdir(denoised_path) if f.endswith(IMAGE_EXTENSIONS)]
         denoised_frame_paths.sort()
 
         ctrl_frame_idx = random.randint(self.sequence_length // 2,
