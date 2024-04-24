@@ -34,10 +34,10 @@ class ImagesDataLoader:
                     A.RandomBrightnessContrast(p=0.2),
                     A.RGBShift(p=0.2),
                     A.ChannelShuffle(p=0.2),
-                    A.ElasticTransform(p=0.2, border_mode=cv2.BORDER_REFLECT),
-                    A.CLAHE(p=0.2),
-                    A.InvertImg(p=0.2)
-                ], p=0.25),
+                    A.InvertImg(p=0.2),
+                    A.PiecewiseAffine(p=0.2),
+                    A.Blur(p=0.2),
+                ], p=0.8),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
