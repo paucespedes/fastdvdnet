@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import numpy as np
 import cv2
 
-def temp_denoise(model, noisyframe, denoisedframe, sigma_noise):
+def temp_denoise(model, noisyframe, denoisedframe):
 	'''Encapsulates call to denoising model and handles padding.
 		Expects noisyframe to be normalized in [0., 1.]
 	'''
@@ -23,10 +23,9 @@ def temp_denoise(model, noisyframe, denoisedframe, sigma_noise):
 	padexp = (0, expanded_w, 0, expanded_h)
 	noisyframe = F.pad(input=noisyframe, pad=padexp, mode='reflect')
 	denoisedframe = F.pad(input=denoisedframe, pad=padexp, mode='reflect')
-	sigma_noise = F.pad(input=sigma_noise, pad=padexp, mode='reflect')
 
 	# denoise
-	out = torch.clamp(model(noisyframe, denoisedframe, sigma_noise), 0., 1.)
+	out = torch.clamp(model(noisyframe, denoisedframe), 0., 1.)
 
 	if expanded_h:
 		out = out[:, :, :-expanded_h, :]
@@ -75,7 +74,7 @@ def denoise_seq_fastdvdnet(noisyseq, denoisedseq, noise_std, temp_psz, model_tem
 		inframes_t_denoised = torch.stack(inframes_denoised, dim=0).contiguous().view((1, temp_psz * C, H, W)).to(denoisedseq.device)
 
 		# append result to output list
-		denframes[fridx] = temp_denoise(model_temporal, inframes_t_noisy, inframes_t_denoised, noise_map)
+		denframes[fridx] = temp_denoise(model_temporal, inframes_t_noisy, inframes_t_denoised)
 
 	# free memory up
 	del inframes_noisy

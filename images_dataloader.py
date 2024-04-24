@@ -20,7 +20,7 @@ class ImagesDataLoader:
                             os.path.isdir(os.path.join(clean_files, d)) and
                             os.path.isdir(os.path.join(noisy_files, d)) and
                             os.path.isdir(os.path.join(denoised_files, d))]
-        self.noise_levels = self.create_noises_dictionary(noisy_files)
+        # self.noise_levels = self.create_noises_dictionary(noisy_files)
         # print(self.noise_levels)
         self.transform = A.ReplayCompose(
             [
@@ -54,13 +54,13 @@ class ImagesDataLoader:
         clean_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         noisy_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
         denoised_batch = torch.zeros((self.batch_size, self.sequence_length, 3, self.crop_size, self.crop_size), device='cuda', dtype=torch.float)
-        noise_levels = torch.zeros((self.batch_size, 1, 1, 1), device='cuda', dtype=torch.float)
+        # noise_levels = torch.zeros((self.batch_size, 1, 1, 1), device='cuda', dtype=torch.float)
 
         for i, video_name in enumerate(batch_randomly_selected_videos):
-            noise_levels[i] = self.noise_levels[video_name]
+            # noise_levels[i] = self.noise_levels[video_name]
             clean_batch[i], noisy_batch[i], denoised_batch[i] = self.get_frames(video_name)
 
-        return clean_batch, noisy_batch, denoised_batch, noise_levels
+        return clean_batch, noisy_batch, denoised_batch #,ˀ noise_levels
 
     def initial_process_image(self, image_path):
         # Load image

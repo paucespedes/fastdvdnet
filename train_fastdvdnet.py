@@ -140,10 +140,10 @@ def main(**args):
 			gt_train = gt_train.cuda(non_blocking=True)
 			imgn_train = imgn_train.cuda(non_blocking=True)
 			imgd_train = imgd_train.cuda(non_blocking=True)
-			noise_map = data[3].expand((N, 1, H, W)).cuda(non_blocking=True)  # one channel per image
+			# noise_map = data[3].expand((N, 1, H, W)).cuda(non_blocking=True)  # one channel per image
 
 			# Evaluate model and optimize it
-			out_train = model(imgn_train, imgd_train, noise_map)
+			out_train = model(imgn_train, imgd_train)
 
 			# Compute loss
 			loss = criterion(gt_train, out_train) / (N*2)
