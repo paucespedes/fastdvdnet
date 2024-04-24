@@ -37,7 +37,7 @@ class ImagesDataLoader:
                     A.InvertImg(p=0.2),
                     A.PiecewiseAffine(p=0.2),
                     A.Blur(p=0.2),
-                ], p=0.5),
+                ], p=0.8),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
