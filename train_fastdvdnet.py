@@ -121,8 +121,6 @@ def main(**args):
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
 			# and extract ground truth (central frame)
 			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_data(data[0], data[1], data[2], ctrl_fr_idx)
-			# and extract ground truth (central frame)
-			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0], data[1], data[2], ctrl_fr_idx)
 
 			N, _, H, W = imgn_train.size()
 
