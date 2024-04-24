@@ -19,7 +19,7 @@ from models import FastDVDnet
 from dataset import ValDataset
 from dataloaders import train_dali_loader
 from images_dataloader import ImagesDataLoader
-from utils import svd_orthogonalization, close_logger, init_logging, normalize_augment
+from utils import svd_orthogonalization, close_logger, init_logging, normalize_data
 from train_common import resume_training, lr_scheduler, log_train_psnr, \
 					validate_and_log, save_model_checkpoint, log_training_patches
 from PIL import Image
@@ -119,6 +119,8 @@ def main(**args):
 			optimizer.zero_grad()
 
 			# convert inp to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
+			# and extract ground truth (central frame)
+			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_data(data[0], data[1], data[2], ctrl_fr_idx)
 			# and extract ground truth (central frame)
 			imgo_train, imgn_train, imgd_train, gt_train, gt_n, gt_d = normalize_augment(data[0], data[1], data[2], ctrl_fr_idx)
 
