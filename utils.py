@@ -28,13 +28,14 @@ def normalize_data(datain_o, datain_n, datain_d, ctrl_fr_idx):
 		[N, num_frames*C. H, W] in  [0., 1.]. It also returns the central frame of the temporal \
 		patch as a ground truth.
 	'''
+	img_train_o = datain_o
+	img_train_d = datain_d
+	img_train_n = datain_n
+
 	# convert to [N, num_frames*C. H, W] in  [0., 1.] from [N, num_frames, C. H, W] in [0., 255.]
-	img_train_o = datain_o.view(datain_o.size()[0], -1, \
-							   datain_o.size()[-2], datain_o.size()[-1]) / 255.
-	img_train_d = datain_d.view(datain_d.size()[0], -1, \
-								 datain_d.size()[-2], datain_d.size()[-1]) / 255.
-	img_train_n = datain_n.view(datain_n.size()[0], -1, \
-								 datain_n.size()[-2], datain_n.size()[-1]) / 255.
+	img_train_o = img_train_o.view(img_train_o.size()[0], -1, img_train_o.size()[-2], img_train_o.size()[-1]) / 255.
+	img_train_d = img_train_d.view(img_train_d.size()[0], -1, img_train_d.size()[-2], img_train_d.size()[-1]) / 255.
+	img_train_n = img_train_n.view(img_train_n.size()[0], -1, img_train_n.size()[-2], img_train_n.size()[-1]) / 255.
 
 	# extract ground truth (central frame)
 	gt_train_o = img_train_o[:, 3*ctrl_fr_idx:3*ctrl_fr_idx+3, :, :]
