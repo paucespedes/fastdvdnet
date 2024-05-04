@@ -31,13 +31,11 @@ class ImagesDataLoader:
                     A.RandomRotate90(p=0.33),
                 ], p=0.8),
                 A.OneOf([
-                    A.RandomBrightnessContrast(p=0.2),
-                    A.RGBShift(p=0.2),
-                    A.ChannelShuffle(p=0.2),
-                    A.InvertImg(p=0.2),
-                    A.PiecewiseAffine(p=0.2),
-                    A.Blur(p=0.2),
-                ], p=0.8),
+                    A.RandomBrightnessContrast(p=0.1),
+                    A.ChannelShuffle(p=0.3),
+                    A.InvertImg(p=0.3),
+                    A.PiecewiseAffine(p=0.1),
+                ], p=0.25),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
