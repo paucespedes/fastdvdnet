@@ -26,16 +26,10 @@ class ImagesDataLoader:
             [
                 A.RandomCrop(height=crop_size, width=crop_size),
                 A.OneOf([
-                    A.HorizontalFlip(p=0.33),
-                    A.VerticalFlip(p=0.33),
-                    A.RandomRotate90(p=0.33),
-                ], p=0.8),
-                A.OneOf([
-                    A.RandomBrightnessContrast(p=0.1),
-                    A.ChannelShuffle(p=0.3),
-                    A.InvertImg(p=0.3),
-                    A.PiecewiseAffine(p=0.1),
-                ], p=0.25),
+                    A.HorizontalFlip(p=0.2),
+                    A.VerticalFlip(p=0.2),
+                    A.RandomRotate90(p=0.6),
+                ], p=0.83333),
                 ToTensorV2()
             ],
             additional_targets={'noisy': 'image', 'denoised': 'image'}
