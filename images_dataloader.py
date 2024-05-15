@@ -1,5 +1,6 @@
 import os
 import random
+import tifffile
 import cv2
 import torch
 import albumentations as A
@@ -57,7 +58,7 @@ class ImagesDataLoader:
     def initial_process_image(self, image_path):
         # Load image
         if image_path.endswith('.tif'):
-            image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+            image = tifffile.imread(image_path)
         else:
             image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)

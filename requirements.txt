@@ -10,5 +10,6 @@ tensorboardX==2.0
 
 numpy~=1.19.2
 imagehash~=4.2.1
-pillow~=8.3.2
+pillow~=8.4.0
 albumentations~=1.0.3
+tifffile~=2020.9.3
