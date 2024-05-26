@@ -29,12 +29,14 @@ def save_out_seq(seqnoisy, seqclean, save_dir, sigmaval, suffix, save_noisy):
         fext = OUTIMGEXT
         noisy_name = os.path.join(save_dir,
                                   ('n{}_{}').format(sigmaval, idx) + fext)
-        if len(suffix) == 0:
-            out_name = os.path.join(save_dir,
-                                    ('n{}_FastDVDnet_{}').format(sigmaval, idx) + fext)
-        else:
-            out_name = os.path.join(save_dir,
-                                    ('n{}_FastDVDnet_{}_{}').format(sigmaval, suffix, idx) + fext)
+        # if len(suffix) == 0:
+        #     out_name = os.path.join(save_dir,
+        #                             ('n{}_FastDVDnet_{}').format(sigmaval, idx) + fext)
+        # else:
+        #     out_name = os.path.join(save_dir,
+        #                             ('n{}_FastDVDnet_{}_{}').format(sigmaval, suffix, idx) + fext)
+
+        out_name = os.path.join(save_dir, '{:04d}'.format(idx) + fext)
 
         # Save result
         if save_noisy:
@@ -67,7 +69,9 @@ def test_fastdvdnet(**args):
     # If save_path does not exist, create it
     if not os.path.exists(args['save_path']):
         os.makedirs(args['save_path'])
-    logger = init_logger_test(args['save_path'])
+
+    psnrs_noisy_list = []
+    psnrs_result_list = []
 
     # Sets data type according to CPU or GPU modes
     if args['cuda']:
@@ -140,14 +144,24 @@ def test_fastdvdnet(**args):
                     format(seq_length, runtime, loadtime))
         logger.info(
             "\tPSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr))
+        psnrs_noisy_list.append(psnr_noisy)
+        psnrs_result_list.append(psnr)
 
         # Save outputs
         if not args['dont_save_results']:
             # Save sequence
             save_out_seq(seq, denframes, save_path, noise, args['suffix'], args['save_noisy'])
 
-        # close logger
+        # close loggerargs['classic_denoised_path']
         close_logger(logger)
+
+        general_logger = init_logger_test(args['save_path'])
+        general_logger.info(
+            "Finished denoising. Noisy folder: {}, Results saved into: ".format( args['test_path'], args['save_path']))
+        general_logger.info(
+            "\tAveraged results: PSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format( \
+                sum(psnrs_noisy_list) / len(psnrs_noisy_list), sum(psnrs_result_list) / len(psnrs_result_list)))
+        close_logger(general_logger)
 
 
 if __name__ == "__main__":
