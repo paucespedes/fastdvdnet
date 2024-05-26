@@ -363,3 +363,13 @@ def remove_dataparallel_wrapper(state_dict):
 		new_state_dict[name] = v
 
 	return new_state_dict
+
+def get_noise_level(path):
+	# Form the path to the subfolder's text file
+	txt_file_path = os.path.join(path, "noise_level.txt")
+	# Check if the text file exists
+	if os.path.isfile(txt_file_path):
+		# Read the integer from the text file and store it in the dictionary
+		with open(txt_file_path, 'r') as file:
+			content = file.read()
+			return int(content.strip()) / 255.

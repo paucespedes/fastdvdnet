@@ -13,7 +13,7 @@ import torch.nn as nn
 from models import FastDVDnet
 from fastdvdnet import denoise_seq_fastdvdnet
 from utils import batch_psnr, init_logger_test, \
-    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger
+    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger, get_noise_level
 
 NUM_IN_FR_EXT = 5  # temporal size of patch
 MC_ALGO = 'DeepFlow'  # motion estimation algorithm
@@ -80,7 +80,7 @@ def test_fastdvdnet(**args):
     model_temp = FastDVDnet(num_input_frames=NUM_IN_FR_EXT)
 
     # Load saved weights
-    state_temp_dict = torch.load(args['model_file'], map_location=device)
+    state_temp_dict = torch.load(args['model_file'])
     if args['cuda']:
         device_ids = [0]
         model_temp = nn.DataParallel(model_temp, device_ids=device_ids).cuda()
@@ -92,61 +92,62 @@ def test_fastdvdnet(**args):
     # Sets the model in evaluation mode (e.g. it removes BN)
     model_temp.eval()
 
-    with torch.no_grad():
-        # process data
-        seq, _, _ = open_sequence(args['test_path'],
-                                  args['gray'],
-                                  expand_if_needed=False,
-                                  max_num_fr=args['max_num_fr_per_seq'])
-        seq = torch.from_numpy(seq).to(device)
-        seq_time = time.time()
+    # Iterate all videos of base test paths
+    for item in os.listdir(args['test_path']):
+        # Check if the item is a directory
+        if os.path.isdir(os.path.join(args['test_path'], item)):
+            noisy_video_path = os.path.join(args['test_path'], item)
+            target_video_path = os.path.join(args['target_path'], item)
+            save_path = os.path.join(args['save_path'], item)
 
-        seqd, _, _ = open_sequence(args['classic_denoised_path'],
-                                  args['gray'],
-                                  expand_if_needed=False,
-                                  max_num_fr=args['max_num_fr_per_seq'])
-        seqd = torch.from_numpy(seqd).to(device)
-        seqd_time = time.time()
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            logger = init_logger_test(save_path)
 
-        # Original clean images processing
-        seqt, _, _ = open_sequence(args['target_path'], \
-                                   args['gray'], \
-                                   expand_if_needed=False, \
-                                   max_num_fr=args['max_num_fr_per_seq'])
-        seqt = torch.from_numpy(seqt).to(device)
+        with torch.no_grad():
+            # process data
+            seq, _, _ = open_sequence(noisy_video_path,
+                                      args['gray'],
+                                      expand_if_needed=False,
+                                      max_num_fr=args['max_num_fr_per_seq'])
+            seq = torch.from_numpy(seq).to(device)
+            seq_time = time.time()
 
-        # Add noise
-        #noise = torch.empty_like(seq).normal_(
-        #    mean=0, std=args['noise_sigma']).to(device)
-        #seqn = seq + noise
-        noisestd = torch.FloatTensor([args['noise_sigma']]).to(device)
+            # Original clean images processing
+            seqt, _, _ = open_sequence(target_video_path, \
+                                       args['gray'], \
+                                       expand_if_needed=False, \
+                                       max_num_fr=args['max_num_fr_per_seq'])
+            seqt = torch.from_numpy(seqt).to(device)
 
-        denframes = denoise_seq_fastdvdnet(seq=seq,
-                                           noise_std=noisestd,
-                                           temp_psz=NUM_IN_FR_EXT,
-                                           model_temporal=model_temp)
+            noise = get_noise_level(noisy_video_path)
+            sigma_noise = torch.cuda.FloatTensor([noise])
 
-    # Compute PSNR and log it
-    stop_time = time.time()
-    psnr = batch_psnr(denframes, seqt, 1.)
-    psnr_noisy = batch_psnr(seq.squeeze(), seqt, 1.)
-    loadtime = (seq_time - start_time)
-    runtime = (stop_time - seq_time)
-    seq_length = seq.size()[0]
-    logger.info("Finished denoising {}".format(args['test_path']))
-    logger.info("\tDenoised {} frames in {:.3f}s, loaded seq in {:.3f}s".
-                format(seq_length, runtime, loadtime))
-    logger.info(
-        "\tPSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr))
+            denframes = denoise_seq_fastdvdnet(seq=seq,
+                                               noise_std=sigma_noise,
+                                               temp_psz=NUM_IN_FR_EXT,
+                                               model_temporal=model_temp)
 
-    # Save outputs
-    if not args['dont_save_results']:
-        # Save sequence
-        save_out_seq(seq, denframes, args['save_path'],
-                     int(args['noise_sigma']*255), args['suffix'], args['save_noisy'])
+        # Compute PSNR and log it
+        stop_time = time.time()
+        psnr = batch_psnr(denframes, seqt, 1.)
+        psnr_noisy = batch_psnr(seq.squeeze(), seqt, 1.)
+        loadtime = (seq_time - start_time)
+        runtime = (stop_time - seq_time)
+        seq_length = seq.size()[0]
+        logger.info("Finished denoising {}".format(noisy_video_path))
+        logger.info("\tDenoised {} frames in {:.3f}s, loaded seq in {:.3f}s".
+                    format(seq_length, runtime, loadtime))
+        logger.info(
+            "\tPSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr))
 
-    # close logger
-    close_logger(logger)
+        # Save outputs
+        if not args['dont_save_results']:
+            # Save sequence
+            save_out_seq(seq, denframes, save_path, noise, args['suffix'], args['save_noisy'])
+
+        # close logger
+        close_logger(logger)
 
 
 if __name__ == "__main__":
@@ -158,8 +159,6 @@ if __name__ == "__main__":
                         help='path to model of the pretrained denoiser')
     parser.add_argument("--test_path", type=str, default="./data/rgb/Kodak24",
                         help='path to noisy sequence to denoise')
-    parser.add_argument("--classic_denoised_path", type=str, default="./data/rgb/Kodak24",
-                        help='path to classically denoised sequence to denoise')
     parser.add_argument("--suffix", type=str, default="",
                         help='suffix to add to output name')
     parser.add_argument("--max_num_fr_per_seq", type=int, default=25,
