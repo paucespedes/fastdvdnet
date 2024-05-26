@@ -69,7 +69,10 @@ def test_fastdvdnet(**args):
     # If save_path does not exist, create it
     if not os.path.exists(args['save_path']):
         os.makedirs(args['save_path'])
-    logger = init_logger_test(args['save_path'])
+
+    psnrs_noisy_list = []
+    psnrs_classic_list = []
+    psnrs_result_list = []
 
     # Sets data type according to CPU or GPU modes
     if args['cuda']:
@@ -152,6 +155,9 @@ def test_fastdvdnet(**args):
                     format(seq_length, runtime, loadtime))
         logger.info(
             "\tPSNR noisy {:.4f}dB, PSNR classic denoising algorithm {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr_classic_algo, psnr))
+        psnrs_noisy_list.append(psnr_noisy)
+        psnrs_classic_list.append(psnr_classic_algo)
+        psnrs_result_list.append(psnr)
 
         # Save outputs
         if not args['dont_save_results']:
@@ -161,6 +167,14 @@ def test_fastdvdnet(**args):
         # close logger
         close_logger(logger)
 
+    general_logger = init_logger_test(args['save_path'])
+    general_logger.info("Finished denoising. Noisy folder: {}, Classic algorithm folder: {}, Results saved into: ".format(\
+        args['test_path'], args['classic_denoised_path'], args['save_path']))
+    general_logger.info(
+        "\tAveraged results: PSNR noisy {:.4f}dB, PSNR classic denoising algorithm {:.4f}dB, PSNR result {:.4f}dB".format(\
+            sum(psnrs_noisy_list)/len(psnrs_noisy_list), sum(psnrs_classic_list)/len(psnrs_classic_list), \
+            sum(psnrs_result_list)/len(psnrs_result_list)))
+    close_logger(general_logger)
 
 if __name__ == "__main__":
     # Parse arguments
