@@ -124,7 +124,7 @@ def open_image(fpath, gray_mode, expand_if_needed=False, expand_axis0=True, norm
 		else:
 			img = cv2.imread(fpath)
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-		img = img.transpose(2, 0, 1)
+			img = img.transpose(2, 0, 1)
 
 	else:
 		# from HxWxC to  CxHxW grayscale image (C=1)
