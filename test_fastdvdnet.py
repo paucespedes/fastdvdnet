@@ -29,12 +29,14 @@ def save_out_seq(seqnoisy, seqclean, save_dir, sigmaval, suffix, save_noisy):
         fext = OUTIMGEXT
         noisy_name = os.path.join(save_dir,
                                   ('n{}_{}').format(sigmaval, idx) + fext)
-        if len(suffix) == 0:
-            out_name = os.path.join(save_dir,
-                                    ('n{}_FastDVDnet_{}').format(sigmaval, idx) + fext)
-        else:
-            out_name = os.path.join(save_dir,
-                                    ('n{}_FastDVDnet_{}_{}').format(sigmaval, suffix, idx) + fext)
+        # if len(suffix) == 0:
+        #     out_name = os.path.join(save_dir,
+        #                             ('n{}_FastDVDnet_{}').format(sigmaval, idx) + fext)
+        # else:
+        #     out_name = os.path.join(save_dir,
+        #                             ('n{}_FastDVDnet_{}_{}').format(sigmaval, suffix, idx) + fext)
+
+        out_name = os.path.join(save_dir, '{:04d}'.format(idx) + fext)
 
         # Save result
         if save_noisy:
