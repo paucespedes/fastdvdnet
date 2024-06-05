@@ -155,13 +155,10 @@ def test_fastdvdnet(**args):
         # close loggerargs['classic_denoised_path']
         close_logger(logger)
 
-        general_logger = init_logger_test(args['save_path'])
-        general_logger.info(
-            "Finished denoising. Noisy folder: {}, Results saved into: ".format( args['test_path'], args['save_path']))
-        general_logger.info(
-            "\tAveraged results: PSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format( \
-                sum(psnrs_noisy_list) / len(psnrs_noisy_list), sum(psnrs_result_list) / len(psnrs_result_list)))
-        close_logger(general_logger)
+    general_logger = init_logger_test(args['save_path'])
+    general_logger.info("Finished denoising. Noisy folder: {}, Results saved into: {}".format( args['test_path'], args['save_path']))
+    general_logger.info("Averaged results: PSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(sum(psnrs_noisy_list) / len(psnrs_noisy_list), sum(psnrs_result_list) / len(psnrs_result_list)))
+    close_logger(general_logger)
 
 
 if __name__ == "__main__":
