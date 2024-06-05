@@ -16,7 +16,7 @@ from models import FastDVDnet
 from fastdvdnet import denoise_seq_fastdvdnet
 from utils import batch_psnr, init_logger_test, \
     variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger, get_noise_level, \
-    deactivate_batchnorm_saved_stats
+    deactivate_batchnorm_saved_stats, remove_batchnorm_layers
 
 NUM_IN_FR_EXT = 5  # temporal size of patch
 MC_ALGO = 'DeepFlow'  # motion estimation algorithm
@@ -104,7 +104,7 @@ def test_fastdvdnet(**args):
     model_temp.load_state_dict(state_temp_dict)
 
     # Sets the model in evaluation mode (e.g. it removes BN)
-    deactivate_batchnorm_saved_stats(model_temp)
+    # model_temp = remove_batchnorm_layers(model_temp)
     model_temp.eval()
 
     # Iterate all videos of base test paths
