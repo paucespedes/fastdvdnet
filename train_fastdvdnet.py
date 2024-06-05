@@ -132,6 +132,8 @@ def main(**args):
 			# showImage(do[12:15, :, :], "5. Original from pipeline: ")
 
 			# Test for different categories(original, noisy, denoised)
+			# imgn = data[1][0][2]
+			# showImage(imgn, "PRE-N")
 			# showImage(gt_train[0], "GT0")
 			# showImage(gt_n[0], "GTN")
 			# showImage(gt_d[0], "GTD")
@@ -200,13 +202,11 @@ def main(**args):
 	close_logger(logger)
 
 def showImage(img, t):
-	image = img.cpu()  # Extract the image at index i
+	image = img.cpu().numpy()  # Extract the image at index i
 
 	# Assuming the tensor is in [0, 1] range, you can convert it to [0, 255] range
-	image = (image * 255).byte()
-
-	# Convert tensor to numpy array and rearrange dimensions from [C, H, W] to [H, W, C]
-	image = image.permute(1, 2, 0).numpy()
+	image = (image * 255)
+	image = image.astype(np.int).transpose(1, 2, 0)
 
 	# Display the image
 	plt.imshow(image)

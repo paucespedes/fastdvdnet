@@ -21,6 +21,7 @@ import torch
 from skimage.measure.simple_metrics import compare_psnr
 from tensorboardX import SummaryWriter
 import tifffile
+from torch import nn
 
 IMAGETYPES = ('*.bmp', '*.png', '*.jpg', '*.jpeg', '*.tif') # Supported image types
 
@@ -124,7 +125,7 @@ def open_image(fpath, gray_mode, expand_if_needed=False, expand_axis0=True, norm
 		else:
 			img = cv2.imread(fpath)
 			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-			img = img.transpose(2, 0, 1)
+		img = img.transpose(2, 0, 1)
 
 	else:
 		# from HxWxC to  CxHxW grayscale image (C=1)
@@ -339,4 +340,26 @@ def get_noise_level(path):
 		# Read the integer from the text file and store it in the dictionary
 		with open(txt_file_path, 'r') as file:
 			content = file.read()
-			return int(content.strip()) / 255.
+			return int(content.strip())/255.
+
+def deactivate_batchnorm_saved_stats(model):
+    for module in model.modules():
+        if isinstance(module, nn.BatchNorm2d):
+            module.track_running_stats = False
+    return model
+
+def remove_batchnorm_layers(model):
+    """
+    Replaces all nn.BatchNorm2d layers in the model with nn.Identity() layers.
+    """
+    for name, module in model.named_modules():
+        if isinstance(module, nn.BatchNorm2d):
+            parent_name = name.rsplit('.', 1)[0]
+            if parent_name:
+                parent_module = dict(model.named_modules())[parent_name]
+            else:
+                parent_module = model
+
+            setattr(parent_module, name.split('.')[-1], nn.Identity())
+
+    return model

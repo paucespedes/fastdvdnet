@@ -10,10 +10,13 @@ import time
 import cv2
 import torch
 import torch.nn as nn
+from matplotlib import pyplot as plt
+import numpy as np
 from models import FastDVDnet
 from fastdvdnet import denoise_seq_fastdvdnet
 from utils import batch_psnr, init_logger_test, \
-    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger, get_noise_level
+    variable_to_cv2_image, remove_dataparallel_wrapper, open_sequence, close_logger, get_noise_level, \
+    deactivate_batchnorm_saved_stats
 
 NUM_IN_FR_EXT = 5  # temporal size of patch
 MC_ALGO = 'DeepFlow'  # motion estimation algorithm
@@ -45,6 +48,12 @@ def save_out_seq(seqnoisy, seqclean, save_dir, sigmaval, suffix, save_noisy):
 
         outimg = variable_to_cv2_image(seqclean[idx].unsqueeze(dim=0))
         cv2.imwrite(out_name, outimg)
+
+def plotSeq(seq, videoName, frame, type):
+    img = seq[frame].astype(np.float32).clip(0.0, 1.00).transpose(1,2,0)
+    plt.imshow(img)
+    plt.title(f"{type} Image {frame} from {videoName}")
+    plt.show()
 
 
 def test_fastdvdnet(**args):
@@ -95,6 +104,7 @@ def test_fastdvdnet(**args):
     model_temp.load_state_dict(state_temp_dict)
 
     # Sets the model in evaluation mode (e.g. it removes BN)
+    deactivate_batchnorm_saved_stats(model_temp)
     model_temp.eval()
 
     # Iterate all videos of base test paths
@@ -168,7 +178,7 @@ def test_fastdvdnet(**args):
         close_logger(logger)
 
     general_logger = init_logger_test(args['save_path'])
-    general_logger.info("Finished denoising. Noisy folder: {}, Classic algorithm folder: {}, Results saved into: ".format(\
+    general_logger.info("Finished denoising. Noisy folder: {}, Classic algorithm folder: {}, Results saved into: {}".format(\
         args['test_path'], args['classic_denoised_path'], args['save_path']))
     general_logger.info(
         "\tAveraged results: PSNR noisy {:.4f}dB, PSNR classic denoising algorithm {:.4f}dB, PSNR result {:.4f}dB".format(\
