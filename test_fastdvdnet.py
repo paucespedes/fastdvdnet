@@ -76,11 +76,10 @@ def test_fastdvdnet(**args):
     start_time = time.time()
 
     # If save_path does not exist, create it
-    if not os.path.exists(args['save_path']):
-        os.makedirs(args['save_path'])
+    # if not os.path.exists(args['save_path']):
+    #     os.makedirs(args['save_path'])
 
     psnrs_noisy_list = []
-    psnrs_classic_list = []
     psnrs_result_list = []
 
     # Sets data type according to CPU or GPU modes
@@ -90,22 +89,22 @@ def test_fastdvdnet(**args):
         device = torch.device('cpu')
 
     # Create models
-    print('Loading models ...')
-    model_temp = FastDVDnet(num_input_frames=NUM_IN_FR_EXT)
-
-    # Load saved weights
-    state_temp_dict = torch.load(args['model_file'])
-    if args['cuda']:
-        device_ids = [0]
-        model_temp = nn.DataParallel(model_temp, device_ids=device_ids).cuda()
-    else:
-        # CPU mode: remove the DataParallel wrapper
-        state_temp_dict = remove_dataparallel_wrapper(state_temp_dict)
-    model_temp.load_state_dict(state_temp_dict)
-
-    # Sets the model in evaluation mode (e.g. it removes BN)
-    # model_temp = remove_batchnorm_layers(model_temp)
-    model_temp.eval()
+    # print('Loading models ...')
+    # model_temp = FastDVDnet(num_input_frames=NUM_IN_FR_EXT)
+    #
+    # # Load saved weights
+    # state_temp_dict = torch.load(args['model_file'])
+    # if args['cuda']:
+    #     device_ids = [0]
+    #     model_temp = nn.DataParallel(model_temp, device_ids=device_ids).cuda()
+    # else:
+    #     # CPU mode: remove the DataParallel wrapper
+    #     state_temp_dict = remove_dataparallel_wrapper(state_temp_dict)
+    # model_temp.load_state_dict(state_temp_dict)
+    #
+    # # Sets the model in evaluation mode (e.g. it removes BN)
+    # # model_temp = remove_batchnorm_layers(model_temp)
+    # model_temp.eval()
 
     # Iterate all videos of base test paths
     for item in os.listdir(args['test_path']):
@@ -114,11 +113,11 @@ def test_fastdvdnet(**args):
             noisy_video_path = os.path.join(args['test_path'], item)
             classic_denoised_video_path = os.path.join(args['classic_denoised_path'], item)
             target_video_path = os.path.join(args['target_path'], item)
-            save_path = os.path.join(args['save_path'], item)
-
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            logger = init_logger_test(save_path)
+            # save_path = os.path.join(args['save_path'], item)
+            #
+            # if not os.path.exists(save_path):
+            #     os.makedirs(save_path)
+            logger = init_logger_test(classic_denoised_video_path)
 
         with torch.no_grad():
             # process data
@@ -146,17 +145,16 @@ def test_fastdvdnet(**args):
             noise = get_noise_level(noisy_video_path)
             sigma_noise = torch.cuda.FloatTensor([noise])
 
-            denframes = denoise_seq_fastdvdnet(noisyseq=seq,
-                                               denoisedseq=seqd,
-                                               noise_std=sigma_noise,
-                                               temp_psz=NUM_IN_FR_EXT,
-                                               model_temporal=model_temp)
+            # denframes = denoise_seq_fastdvdnet(noisyseq=seq,
+            #                                    denoisedseq=seqd,
+            #                                    noise_std=sigma_noise,
+            #                                    temp_psz=NUM_IN_FR_EXT,
+            #                                    model_temporal=model_temp)
 
         # Compute PSNR and log it
         stop_time = time.time()
-        psnr = batch_psnr(denframes, seqt, 1.)
+        psnr = batch_psnr(seqd.squeeze(), seqt, 1.)
         psnr_noisy = batch_psnr(seq.squeeze(), seqt, 1.)
-        psnr_classic_algo = batch_psnr(seqd.squeeze(), seqt, 1.)
         loadtime = (seq_time - start_time)
         runtime = (stop_time - seq_time)
         seq_length = seq.size()[0]
@@ -164,26 +162,24 @@ def test_fastdvdnet(**args):
         logger.info("\tDenoised {} frames in {:.3f}s, loaded seq in {:.3f}s".
                     format(seq_length, runtime, loadtime))
         logger.info(
-            "\tPSNR noisy {:.4f}dB, PSNR classic denoising algorithm {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr_classic_algo, psnr))
+            "\tPSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(psnr_noisy, psnr))
         psnrs_noisy_list.append(psnr_noisy)
-        psnrs_classic_list.append(psnr_classic_algo)
         psnrs_result_list.append(psnr)
 
         # Save outputs
-        if not args['dont_save_results']:
-            # Save sequence
-            save_out_seq(seq, denframes, save_path, noise, args['suffix'], args['save_noisy'])
+        # if not args['dont_save_results']:
+        #     # Save sequence
+        #     save_out_seq(seq, denframes, save_path, noise, args['suffix'], args['save_noisy'])
 
         # close logger
         close_logger(logger)
 
-    general_logger = init_logger_test(args['save_path'])
+    general_logger = init_logger_test(args['classic_denoised_path'])
     general_logger.info("Finished denoising. Noisy folder: {}, Classic algorithm folder: {}, Results saved into: {}".format(\
         args['test_path'], args['classic_denoised_path'], args['save_path']))
     general_logger.info(
-        "\tAveraged results: PSNR noisy {:.4f}dB, PSNR classic denoising algorithm {:.4f}dB, PSNR result {:.4f}dB".format(\
-            sum(psnrs_noisy_list)/len(psnrs_noisy_list), sum(psnrs_classic_list)/len(psnrs_classic_list), \
-            sum(psnrs_result_list)/len(psnrs_result_list)))
+        "\tAveraged results: PSNR noisy {:.4f}dB, PSNR result {:.4f}dB".format(\
+            sum(psnrs_noisy_list)/len(psnrs_noisy_list), sum(psnrs_result_list)/len(psnrs_result_list)))
     close_logger(general_logger)
 
 if __name__ == "__main__":
