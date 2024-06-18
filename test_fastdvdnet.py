@@ -104,7 +104,7 @@ def test_fastdvdnet(**args):
     model_temp.load_state_dict(state_temp_dict)
 
     # Sets the model in evaluation mode (e.g. it removes BN)
-    # model_temp = remove_batchnorm_layers(model_temp)
+    model_temp = deactivate_batchnorm_saved_stats(model_temp)
     model_temp.eval()
 
     # Iterate all videos of base test paths
