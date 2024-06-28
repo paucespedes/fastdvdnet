@@ -20,10 +20,8 @@ class CvBlock(nn.Module):
 		super(CvBlock, self).__init__()
 		self.convblock = nn.Sequential(
 			nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
-			nn.BatchNorm2d(out_ch),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, bias=False),
-			nn.BatchNorm2d(out_ch),
 			nn.ReLU(inplace=True)
 		)
 
@@ -43,10 +41,8 @@ class InputCvBlock(nn.Module):
 		self.convblock = nn.Sequential(
 			nn.Conv2d(num_in_frames*(3 * block_multiplier + 1), num_in_frames*self.interm_ch, \
 					  kernel_size=3, padding=1, groups=num_in_frames, bias=False),
-			nn.BatchNorm2d(num_in_frames*self.interm_ch),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(num_in_frames*self.interm_ch, out_ch, kernel_size=3, padding=1, bias=False),
-			nn.BatchNorm2d(out_ch),
 			nn.ReLU(inplace=True)
 		)
 
@@ -59,7 +55,6 @@ class DownBlock(nn.Module):
 		super(DownBlock, self).__init__()
 		self.convblock = nn.Sequential(
 			nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, stride=2, bias=False),
-			nn.BatchNorm2d(out_ch),
 			nn.ReLU(inplace=True),
 			CvBlock(out_ch, out_ch)
 		)
@@ -86,7 +81,6 @@ class OutputCvBlock(nn.Module):
 		super(OutputCvBlock, self).__init__()
 		self.convblock = nn.Sequential(
 			nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1, bias=False),
-			nn.BatchNorm2d(in_ch),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False)
 		)
