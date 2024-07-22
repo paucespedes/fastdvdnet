@@ -21,6 +21,7 @@ import cv2
 import torch
 from skimage.measure.simple_metrics import compare_psnr
 from tensorboardX import SummaryWriter
+from tifffile import tifffile
 
 IMAGETYPES = ('*.bmp', '*.png', '*.jpg', '*.jpeg', '*.tif') # Supported image types
 
@@ -155,10 +156,13 @@ def open_image(fpath, gray_mode, expand_if_needed=False, expand_axis0=True, norm
 		expanded_w: True if original dim W was odd and image got expanded in this dimension.
 	"""
 	if not gray_mode:
-		# Open image as a CxHxW torch.Tensor
-		img = cv2.imread(fpath)
-		# from HxWxC to CxHxW, RGB image
-		img = (cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).transpose(2, 0, 1)
+		# Load image
+		if fpath.endswith('.tif'):
+			img = tifffile.imread(fpath)
+		else:
+			img = cv2.imread(fpath)
+			img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+		img = img.transpose(2, 0, 1)
 	else:
 		# from HxWxC to  CxHxW grayscale image (C=1)
 		img = cv2.imread(fpath, cv2.IMREAD_GRAYSCALE)
